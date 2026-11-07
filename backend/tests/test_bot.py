@@ -2,7 +2,7 @@ from game.bot import Bot, BotPersonality
 from game.player import Player
 from game.bidding import Bid
 from game.hand_evaluator import HandRank
-
+from game.cards import Card, Rank, Suit
 
 def create_bot(personality):
 
@@ -86,3 +86,36 @@ def test_bot_statistics():
     assert bot.total_bids == 0
     assert bot.successful_challenges == 0
     assert bot.failed_challenges == 0
+
+def test_conservative_bot_accepts_low_probability_claim():
+    player = Player("1", "Bot", cards=[
+        Card(Rank.TWO, Suit.HEARTS),
+        Card(Rank.THREE, Suit.SPADES)
+    ])
+
+    bot = Bot(player, BotPersonality.CONSERVATIVE)
+    bid = Bid(HandRank.FOUR_OF_A_KIND, (14,))
+
+    assert bot.should_challenge(bid, 12) is True
+
+def test_aggressive_bot_challenges_more_readily():
+    player = Player("1", "Bot", cards=[
+        Card(Rank.TWO, Suit.HEARTS),
+        Card(Rank.THREE, Suit.SPADES)
+    ])
+
+    bot = Bot(player, BotPersonality.AGGRESSIVE)
+    bid = Bid(HandRank.THREE_OF_A_KIND, (14,))
+
+    assert bot.should_challenge(bid, 12) is True
+
+def test_conservative_bot_challenges_very_unlikely_claim():
+    player = Player("1", "Bot", cards=[
+        Card(Rank.KING, Suit.HEARTS),
+        Card(Rank.KING, Suit.SPADES)
+    ])
+
+    bot = Bot(player, BotPersonality.AGGRESSIVE)
+    bid = Bid(HandRank.ONE_PAIR, (13,))
+
+    assert bot.should_challenge(bid, 12) is False

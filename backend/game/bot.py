@@ -4,6 +4,9 @@ import random
 from game.bidding import Bid
 from game.hand_evaluator import HandRank
 
+from game.probability import probability_of_rank_claim
+from game.cards import Rank
+
 
 class BotPersonality(str, Enum):
     CONSERVATIVE = "Conservative"
@@ -32,32 +35,44 @@ class Bot:
 
     def should_challenge(self, current_bid, total_cards):
 
-        """
-        Decide whether to challenge the current bid.
-
-        This is an initial personality-based model.
-        We'll replace it with probability calculations later.
-        """
-
         if current_bid is None:
             return False
 
-        # Initial challenge tendencies.
+        # We currently support only rank-based claims.
+        required_counts = {
+            HandRank.ONE_PAIR: 2,
+            HandRank.THREE_OF_A_KIND: 3,
+            HandRank.FOUR_OF_A_KIND: 4
+        }
+
+        # Avoid evaluating unsupported claim categories.
+        if current_bid.category not in required_counts:
+            return False
+
+        # Extract the claimed rank.
+        claimed_rank = Rank(current_bid.values[0])
+
+        # Determine how many cards of this rank are required.
+        required_count = required_counts[current_bid.category]
+
+        # Estimate the probability that the claim is true.
+        probability = probability_of_rank_claim(
+            self.player.cards,
+            total_cards,
+            claimed_rank,
+            required_count
+        )
+
+        # Personality-based challenge thresholds.
         thresholds = {
-            BotPersonality.CONSERVATIVE: 0.30,
-            BotPersonality.AGGRESSIVE: 0.10,
+            BotPersonality.CONSERVATIVE: 0.15,
+            BotPersonality.AGGRESSIVE: 0.40,
             BotPersonality.DETECTIVE: 0.25
         }
 
-        probability = thresholds[self.personality]
+        threshold = thresholds[self.personality]
 
-        # The detective becomes more suspicious of
-        # higher-ranking claims.
-        if self.personality == BotPersonality.DETECTIVE:
-            if current_bid.category >= HandRank.THREE_OF_A_KIND:
-                probability += 0.20
-
-        return random.random() < probability
+        return probability < threshold
 
     def choose_bid(self, current_bid):
 
