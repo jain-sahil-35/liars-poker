@@ -8,7 +8,7 @@ from game.opponent_manager import OpponentProfileManager
 
 class GameState:
 
-    def __init__(self, players):
+    def __init__(self, players, bots=None):
 
         if not 2 <= len(players) <= 8:
             raise ValueError("A game requires 2 to 8 players.")
@@ -29,6 +29,22 @@ class GameState:
 
         # Track opponent behaviour throughout the game.
         self.opponent_manager = OpponentProfileManager(player_ids)
+
+        # Register bots and connect them to the shared opponent manager.
+        self.bots = {}
+
+        for player_id, bot in (bots or {}).items():
+
+            player = self.get_player(player_id)
+
+            if bot.player_id != player_id:
+                raise ValueError("Bot ID does not match its registered player ID.")
+
+            if bot.player is not player:
+                raise ValueError("Bot must reference the same Player object used by GameState.")
+
+            bot.opponent_manager = self.opponent_manager
+            self.bots[player_id] = bot
 
         self.current_turn_index = 0
 
@@ -266,3 +282,58 @@ class GameState:
             raise ValueError("The game has already finished.")
 
         self.start_round()
+
+    def process_bot_turn(self):
+        """
+        Process one complete turn for the current bot.
+
+        A bot either places a bid or challenges the previous bid.
+        """
+
+        if not self.started or self.finished:
+            raise ValueError("No active game.")
+
+        if self.round_resolved:
+            raise ValueError("The current round has already been resolved.")
+
+        player = self.current_player
+
+        if player.player_id not in self.bots:
+            raise ValueError("The current player is not a bot.")
+
+        bot = self.bots[player.player_id]
+
+        total_cards = sum(
+            active_player.card_count
+            for active_player in self.active_players
+        )
+
+        action, bid = bot.decide_action(
+            self.bid_manager.current_bid,
+            total_cards,
+            self.bidder_id
+        )
+
+        if action == "challenge":
+
+            result = self.call_bullshit(player.player_id)
+
+            if result.claim_is_true:
+                bot.failed_challenges += 1
+            else:
+                bot.successful_challenges += 1
+
+            return "challenge", result
+
+        if action == "bid":
+
+            if bid is None:
+                raise ValueError("Bot selected bid action without providing a bid.")
+
+            self.place_bid(player.player_id, bid)
+
+            self.next_turn()
+
+            return "bid", bid
+
+        raise ValueError(f"Unknown bot action: {action}")

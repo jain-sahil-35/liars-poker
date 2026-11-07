@@ -5,6 +5,7 @@ from game.game_state import GameState
 from game.bidding import Bid
 from game.hand_evaluator import HandRank
 from game.cards import Card, Rank, Suit
+from game.bot import Bot, BotPersonality    
 
 
 def make_card(rank, suit):
@@ -498,3 +499,170 @@ def test_challenge_updates_challenger_statistics():
     assert profile.challenges_lost == (
         1 if result.claim_is_true else 0
     )
+
+def test_game_registers_bots():
+
+    players = [
+        Player("p1", "Human"),
+        Player("p2", "Bot")
+    ]
+
+    bot = Bot(players[1], BotPersonality.CONSERVATIVE)
+
+    game = GameState(players, bots={"p2": bot})
+
+    assert "p2" in game.bots
+    assert game.bots["p2"] is bot
+
+
+def test_bot_receives_game_opponent_manager():
+
+    players = [
+        Player("p1", "Human"),
+        Player("p2", "Bot")
+    ]
+
+    bot = Bot(players[1], BotPersonality.DETECTIVE)
+
+    game = GameState(players, bots={"p2": bot})
+
+    assert bot.opponent_manager is game.opponent_manager
+
+
+def test_game_rejects_unknown_bot_player():
+
+    players = [
+        Player("p1", "Human"),
+        Player("p2", "Bot")
+    ]
+
+    bot = Bot(players[1], BotPersonality.CONSERVATIVE)
+
+    with pytest.raises(ValueError):
+        GameState(players, bots={"unknown": bot})
+
+
+def test_game_rejects_mismatched_bot_player():
+
+    players = [
+        Player("p1", "Human"),
+        Player("p2", "Bot")
+    ]
+
+    different_player = Player("p2", "Bot")
+    bot = Bot(different_player, BotPersonality.CONSERVATIVE)
+
+    with pytest.raises(ValueError):
+        GameState(players, bots={"p2": bot})
+
+def test_bot_places_bid_and_turn_advances():
+
+    players = [
+        Player("p1", "Human"),
+        Player("p2", "Bot")
+    ]
+
+    bot = Bot(players[1], BotPersonality.CONSERVATIVE)
+
+    game = GameState(players, bots={"p2": bot})
+
+    game.start_game()
+    game.next_turn()
+
+    action, bid = game.process_bot_turn()
+
+    assert action == "bid"
+    assert game.bidder_id == "p2"
+    assert game.bid_manager.current_bid == bid
+    assert game.current_player.player_id == "p1"
+
+
+def test_human_turn_cannot_be_processed_as_bot():
+
+    players = [
+        Player("p1", "Human"),
+        Player("p2", "Bot")
+    ]
+
+    bot = Bot(players[1], BotPersonality.CONSERVATIVE)
+
+    game = GameState(players, bots={"p2": bot})
+
+    game.start_game()
+
+    with pytest.raises(ValueError):
+        game.process_bot_turn()
+
+def test_bot_challenges_and_round_resolves(monkeypatch):
+
+    players = [
+        Player("p1", "Human"),
+        Player("p2", "Bot")
+    ]
+
+    bot = Bot(players[1], BotPersonality.AGGRESSIVE)
+
+    game = GameState(players, bots={"p2": bot})
+
+    game.start_game()
+
+    # The human makes a claim.
+    bid = Bid(HandRank.ONE_PAIR, (10,))
+
+    game.place_bid("p1", bid)
+    game.next_turn()
+
+    # Force the bot to challenge for this test.
+    monkeypatch.setattr(
+        bot,
+        "decide_action",
+        lambda *args: ("challenge", None)
+    )
+
+    action, result = game.process_bot_turn()
+
+    assert action == "challenge"
+    assert result.loser_id in ("p1", "p2")
+    assert game.round_resolved is True
+
+
+def test_successful_bot_challenge_updates_statistics(monkeypatch):
+
+    players = [
+        Player("p1", "Human"),
+        Player("p2", "Bot")
+    ]
+
+    bot = Bot(players[1], BotPersonality.AGGRESSIVE)
+
+    game = GameState(players, bots={"p2": bot})
+
+    game.start_game()
+
+    # Give the players known cards.
+    players[0].cards = [
+        make_card(14, Suit.HEARTS),
+        make_card(3, Suit.CLUBS)
+    ]
+
+    players[1].cards = [
+        make_card(13, Suit.SPADES),
+        make_card(7, Suit.DIAMONDS)
+    ]
+
+    # This claim is impossible.
+    bid = Bid(HandRank.ROYAL_FLUSH, ())
+
+    game.place_bid("p1", bid)
+    game.next_turn()
+
+    monkeypatch.setattr(
+        bot,
+        "decide_action",
+        lambda *args: ("challenge", None)
+    )
+
+    game.process_bot_turn()
+
+    assert bot.successful_challenges == 1
+    assert bot.failed_challenges == 0
