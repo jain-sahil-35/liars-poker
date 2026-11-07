@@ -16,11 +16,11 @@ class BotPersonality(str, Enum):
 
 class Bot:
 
-    def __init__(self, player, personality):
+    def __init__(self, player, personality, opponent_manager=None):
         self.player = player
         self.personality = personality
+        self.opponent_manager = opponent_manager
 
-        # Track the number of challenges and bluffs.
         self.successful_challenges = 0
         self.failed_challenges = 0
         self.total_bids = 0
@@ -33,29 +33,23 @@ class Bot:
     def name(self):
         return self.player.name
 
-    def should_challenge(self, current_bid, total_cards):
+    def should_challenge(self, current_bid, total_cards, bidder_id=None):
 
         if current_bid is None:
             return False
 
-        # We currently support only rank-based claims.
         required_counts = {
             HandRank.ONE_PAIR: 2,
             HandRank.THREE_OF_A_KIND: 3,
             HandRank.FOUR_OF_A_KIND: 4
         }
 
-        # Avoid evaluating unsupported claim categories.
         if current_bid.category not in required_counts:
             return False
 
-        # Extract the claimed rank.
         claimed_rank = Rank(current_bid.values[0])
-
-        # Determine how many cards of this rank are required.
         required_count = required_counts[current_bid.category]
 
-        # Estimate the probability that the claim is true.
         probability = probability_of_rank_claim(
             self.player.cards,
             total_cards,
@@ -63,7 +57,6 @@ class Bot:
             required_count
         )
 
-        # Personality-based challenge thresholds.
         thresholds = {
             BotPersonality.CONSERVATIVE: 0.15,
             BotPersonality.AGGRESSIVE: 0.40,
@@ -71,6 +64,17 @@ class Bot:
         }
 
         threshold = thresholds[self.personality]
+
+        # Adjust the Detective's suspicion using opponent history.
+        if (
+            self.personality == BotPersonality.DETECTIVE
+            and self.opponent_manager is not None
+            and bidder_id is not None
+            and bidder_id != self.player_id
+        ):
+            profile = self.opponent_manager.get_profile(bidder_id)
+
+            threshold += (profile.false_claim_rate - 0.5) * 0.20
 
         return probability < threshold
 
@@ -121,13 +125,9 @@ class Bot:
 
         return higher_bids[0]
 
-    def decide_action(self, current_bid, total_cards):
+    def decide_action(self, current_bid, total_cards, bidder_id=None):
 
-        """
-        Decide whether to challenge or raise.
-        """
-
-        if self.should_challenge(current_bid, total_cards):
+        if self.should_challenge(current_bid, total_cards, bidder_id):
             return "challenge", None
 
         bid = self.choose_bid(current_bid)
@@ -136,5 +136,4 @@ class Bot:
             return "challenge", None
 
         self.total_bids += 1
-
         return "bid", bid

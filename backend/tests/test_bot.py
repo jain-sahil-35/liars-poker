@@ -3,6 +3,7 @@ from game.player import Player
 from game.bidding import Bid
 from game.hand_evaluator import HandRank
 from game.cards import Card, Rank, Suit
+from game.opponent_manager import OpponentProfileManager
 
 def create_bot(personality):
 
@@ -119,3 +120,77 @@ def test_conservative_bot_challenges_very_unlikely_claim():
     bid = Bid(HandRank.ONE_PAIR, (13,))
 
     assert bot.should_challenge(bid, 12) is False
+
+def test_detective_learns_from_false_claims(monkeypatch):
+
+    player = Player("bot", "Detective")
+
+    manager = OpponentProfileManager(["bot", "alice"])
+
+    detective = Bot(
+        player,
+        BotPersonality.DETECTIVE,
+        manager
+    )
+
+    bid = Bid(HandRank.THREE_OF_A_KIND, (14,))
+
+    # Keep the probability fixed so this test isolates
+    # the effect of opponent history.
+    monkeypatch.setattr(
+        "game.bot.probability_of_rank_claim",
+        lambda *args: 0.30
+    )
+
+    # Initially, the Detective should not challenge.
+    assert detective.should_challenge(bid, 12, "alice") is False
+
+    # Alice makes four false claims.
+    for _ in range(4):
+        manager.record_claim("alice", False)
+
+    # The Detective should now be more suspicious.
+    assert detective.should_challenge(bid, 12, "alice") is True
+
+
+def test_detective_does_not_adjust_for_own_claim_history(monkeypatch):
+
+    player = Player("bot", "Detective")
+
+    manager = OpponentProfileManager(["bot", "alice"])
+
+    detective = Bot(
+        player,
+        BotPersonality.DETECTIVE,
+        manager
+    )
+
+    bid = Bid(HandRank.THREE_OF_A_KIND, (14,))
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_rank_claim",
+        lambda *args: 0.30
+    )
+
+    for _ in range(4):
+        manager.record_claim("bot", False)
+
+    # The bot must not use its own claim history
+    # when evaluating its own bid.
+    assert detective.should_challenge(bid, 12, "bot") is False
+
+
+def test_detective_works_without_opponent_manager(monkeypatch):
+
+    player = Player("bot", "Detective")
+
+    detective = Bot(player, BotPersonality.DETECTIVE)
+
+    bid = Bid(HandRank.THREE_OF_A_KIND, (14,))
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_rank_claim",
+        lambda *args: 0.30
+    )
+
+    assert detective.should_challenge(bid, 12, "alice") is False
