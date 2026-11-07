@@ -386,3 +386,115 @@ def test_game_ends_when_only_one_player_remains():
 
     assert game.finished is True
     assert game.winner.player_id == "p2"
+
+def test_bid_is_recorded_in_history():
+    game = create_game()
+    game.start_game()
+
+    bid = Bid(HandRank.ONE_PAIR, (10,))
+    game.place_bid(game.current_player.player_id, bid)
+
+    assert len(game.bid_history) == 1
+    assert game.bid_history.latest_bid().bid == bid
+
+
+def test_bid_updates_opponent_statistics():
+    game = create_game()
+    game.start_game()
+
+    player_id = game.current_player.player_id
+    bid = Bid(HandRank.ONE_PAIR, (10,))
+
+    game.place_bid(player_id, bid)
+
+    profile = game.opponent_manager.get_profile(player_id)
+
+    assert profile.total_bids == 1
+
+
+def test_bid_history_resets_between_rounds():
+    game = create_game()
+    game.start_game()
+
+    bid = Bid(HandRank.ONE_PAIR, (10,))
+    game.place_bid(game.current_player.player_id, bid)
+
+    assert len(game.bid_history) == 1
+
+    game.next_turn()
+
+    # Resolve the round before starting another.
+    challenger = game.players[1]
+    game.call_bullshit(challenger.player_id)
+
+    game.start_next_round()
+
+    assert len(game.bid_history) == 0
+
+
+def test_opponent_statistics_persist_between_rounds():
+    game = create_game()
+    game.start_game()
+
+    player_id = game.current_player.player_id
+    bid = Bid(HandRank.ONE_PAIR, (10,))
+
+    game.place_bid(player_id, bid)
+
+    game.next_turn()
+
+    game.call_bullshit(game.players[1].player_id)
+    game.start_next_round()
+
+    profile = game.opponent_manager.get_profile(player_id)
+
+    assert profile.total_bids == 1
+
+
+def test_challenge_updates_bidder_bluff_statistics():
+    game = create_game()
+    game.start_game()
+
+    bidder = game.current_player
+    bid = Bid(HandRank.ROYAL_FLUSH, ())
+
+    game.place_bid(bidder.player_id, bid)
+
+    game.next_turn()
+
+    challenger = game.players[1]
+    result = game.call_bullshit(challenger.player_id)
+
+    profile = game.opponent_manager.get_profile(bidder.player_id)
+
+    assert profile.false_claims == (
+        1 if not result.claim_is_true else 0
+    )
+
+    assert profile.true_claims == (
+        1 if result.claim_is_true else 0
+    )
+
+
+def test_challenge_updates_challenger_statistics():
+    game = create_game()
+    game.start_game()
+
+    bidder = game.current_player
+    bid = Bid(HandRank.ROYAL_FLUSH, ())
+
+    game.place_bid(bidder.player_id, bid)
+
+    game.next_turn()
+
+    challenger = game.players[1]
+    result = game.call_bullshit(challenger.player_id)
+
+    profile = game.opponent_manager.get_profile(challenger.player_id)
+
+    assert profile.challenges_won == (
+        1 if not result.claim_is_true else 0
+    )
+    assert profile.challenges_lost == (
+        1 if result.claim_is_true else 0
+    )

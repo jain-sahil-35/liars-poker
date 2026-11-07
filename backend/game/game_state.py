@@ -2,6 +2,8 @@ from game.deck import Deck
 from game.player import Player
 from game.bidding import BidManager
 from game.challenge import resolve_challenge
+from game.bid_history import BidHistory
+from game.opponent_manager import OpponentProfileManager
 
 
 class GameState:
@@ -21,6 +23,12 @@ class GameState:
         self.deck = Deck()
         self.bid_manager = BidManager()
         self._bidder_id = None
+
+        # Track bids made during the current round.
+        self.bid_history = BidHistory()
+
+        # Track opponent behaviour throughout the game.
+        self.opponent_manager = OpponentProfileManager(player_ids)
 
         self.current_turn_index = 0
 
@@ -98,6 +106,9 @@ class GameState:
         self.bid_manager.reset()
         self._bidder_id = None
 
+        # Reset current-round bid history.
+        self.bid_history.reset()
+
         self.round_resolved = False
 
         # Collect cards from the previous round.
@@ -170,6 +181,18 @@ class GameState:
         self.bid_manager.place_bid(bid)
         self._bidder_id = player_id
 
+        # Record the bid in the current round's history.
+        turn_number = len(self.bid_history) + 1
+
+        self.bid_history.add_bid(
+            player_id,
+            bid,
+            turn_number
+        )
+
+        # Update the player's long-term statistics.
+        self.opponent_manager.record_bid(player_id)
+
         return bid
 
     def call_bullshit(self, challenger_id):
@@ -201,6 +224,20 @@ class GameState:
         loser = self.get_player(result.loser_id)
 
         loser.add_penalty_card()
+
+        # Record whether the bidder's claim was true or false.
+        self.opponent_manager.record_claim(
+            bidder_id,
+            result.claim_is_true
+        )
+
+        # Record the challenger's performance.
+        challenge_won = not result.claim_is_true
+
+        self.opponent_manager.record_challenge(
+            challenger_id,
+            challenge_won
+        )
 
         self.last_loser_id = loser.player_id
         self.round_resolved = True
