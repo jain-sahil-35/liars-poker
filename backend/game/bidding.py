@@ -11,7 +11,7 @@ class Bid:
 
     def __post_init__(self):
 
-        if not self.values:
+        if not self.values and self.category != HandRank.ROYAL_FLUSH:
             raise ValueError("A bid must contain rank values.")
 
         if any(value < 2 or value > 14 for value in self.values):

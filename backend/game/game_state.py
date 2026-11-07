@@ -1,0 +1,231 @@
+from game.deck import Deck
+from game.player import Player
+from game.bidding import BidManager
+from game.challenge import resolve_challenge
+
+
+class GameState:
+
+    def __init__(self, players):
+
+        if not 2 <= len(players) <= 8:
+            raise ValueError("A game requires 2 to 8 players.")
+
+        player_ids = [player.player_id for player in players]
+
+        if len(set(player_ids)) != len(player_ids):
+            raise ValueError("Player IDs must be unique.")
+
+        self.players = players
+
+        self.deck = Deck()
+        self.bid_manager = BidManager()
+        self._bidder_id = None
+
+        self.current_turn_index = 0
+
+        self.last_loser_id = None
+
+        self.round_number = 0
+
+        self.started = False
+        self.round_resolved = False
+        self.finished = False
+
+    @property
+    def active_players(self):
+        """Return players who have not been eliminated."""
+
+        return [
+            player
+            for player in self.players
+            if not player.eliminated
+        ]
+
+    @property
+    def winner(self):
+        """Return the winner if only one player remains."""
+
+        if len(self.active_players) == 1:
+            return self.active_players[0]
+
+        return None
+
+    @property
+    def current_player(self):
+        """Return the player whose turn it currently is."""
+
+        if not self.started or self.finished:
+            return None
+
+        return self.active_players[self.current_turn_index]
+
+    def get_player(self, player_id):
+
+        for player in self.players:
+
+            if player.player_id == player_id:
+                return player
+
+        raise ValueError("Player not found.")
+
+    def start_game(self):
+        """Start the match and deal the first round."""
+
+        if self.started:
+            raise ValueError("Game has already started.")
+
+        self.started = True
+
+        self.start_round()
+
+    def start_round(self):
+        """Prepare and deal a new round."""
+
+        if self.finished:
+            raise ValueError("Game has already finished.")
+
+        active = self.active_players
+
+        if len(active) <= 1:
+            self.finished = True
+            return
+
+        # Create a fresh shuffled deck.
+        self.deck.reset()
+
+        # Reset bidding.
+        self.bid_manager.reset()
+        self._bidder_id = None
+
+        self.round_resolved = False
+
+        # Collect cards from the previous round.
+        for player in active:
+            player.clear_cards()
+
+        # Deal cards according to each player's hand size.
+        for player in active:
+            cards = self.deck.deal(player.hand_size)
+            player.receive_cards(cards)
+
+        self.round_number += 1
+
+        # Determine who starts.
+        if self.last_loser_id is None:
+            self.current_turn_index = 0
+
+        else:
+            loser_index = next(
+                i for i, player in enumerate(active)
+                if player.player_id == self.last_loser_id
+            ) if any(
+                player.player_id == self.last_loser_id
+                for player in active
+            ) else None
+
+            if loser_index is None:
+                original_index = next(
+                    i for i, player in enumerate(self.players)
+                    if player.player_id == self.last_loser_id
+                )
+
+                for offset in range(1, len(self.players) + 1):
+                    candidate = self.players[
+                        (original_index + offset) % len(self.players)
+                    ]
+
+                    if not candidate.eliminated:
+                        self.current_turn_index = active.index(candidate)
+                        break
+
+            else:
+                self.current_turn_index = (
+                    loser_index + 1
+                ) % len(active)
+
+    def next_turn(self):
+        """Move clockwise to the next active player."""
+
+        if not self.started or self.finished:
+            raise ValueError("No active game.")
+
+        active = self.active_players
+
+        self.current_turn_index = (
+            self.current_turn_index + 1
+        ) % len(active)
+
+        return self.current_player
+
+    def place_bid(self, player_id, bid):
+        """Allow the current player to make a bid."""
+
+        if not self.started or self.finished:
+            raise ValueError("No active game.")
+
+        if self.current_player.player_id != player_id:
+            raise ValueError("It is not this player's turn.")
+
+        self.bid_manager.place_bid(bid)
+        self._bidder_id = player_id
+
+        return bid
+
+    def call_bullshit(self, challenger_id):
+        """Resolve a challenge and apply the penalty."""
+
+        if not self.started or self.finished:
+            raise ValueError("No active game.")
+
+        if self.current_player.player_id != challenger_id:
+            raise ValueError("It is not this player's turn.")
+
+        bid = self.bid_manager.call_bullshit()
+
+        bidder_id = self.bidder_id
+
+        cards_by_player = {
+            player.player_id: player.cards.copy()
+            for player in self.active_players
+        }
+
+        result = resolve_challenge(
+            cards_by_player,
+            bidder_id,
+            challenger_id,
+            bid
+        )
+
+        # Apply the penalty to the loser.
+        loser = self.get_player(result.loser_id)
+
+        loser.add_penalty_card()
+
+        self.last_loser_id = loser.player_id
+        self.round_resolved = True
+
+        # End the match if only one player remains.
+        if len(self.active_players) <= 1:
+            self.finished = True
+
+        return result
+
+    @property
+    def bidder_id(self):
+        """ID of the player who made the current bid."""
+
+        return self._bidder_id
+    
+    def start_next_round(self):
+        """Start another round after the previous challenge."""
+
+        if not self.round_resolved:
+            raise ValueError(
+                "Cannot start a new round before resolving the current one."
+            )
+
+        if self.finished:
+            raise ValueError("The game has already finished.")
+
+        self.start_round()

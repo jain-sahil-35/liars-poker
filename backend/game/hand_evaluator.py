@@ -83,7 +83,7 @@ def evaluate_five(cards):
         )
 
     # Full House
-    if groups[0][0] == 3 and groups[1][0] == 2:
+    if len(groups) >= 2 and groups[0][0] == 3 and groups[1][0] == 2:
         return (
             HandRank.FULL_HOUSE,
             groups[0][1],
