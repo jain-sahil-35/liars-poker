@@ -90,6 +90,7 @@ class Bot:
         candidates = []
 
         for category in [
+            HandRank.HIGH_CARD,
             HandRank.ONE_PAIR,
             HandRank.THREE_OF_A_KIND,
             HandRank.FOUR_OF_A_KIND
@@ -104,7 +105,7 @@ class Bot:
         candidates.sort(key=lambda bid: bid.strength)
 
         if current_bid is None:
-            return Bid(HandRank.ONE_PAIR, (2,))
+            return Bid(HandRank.HIGH_CARD, (2,))
 
         higher_bids = [
             bid for bid in candidates

@@ -33,7 +33,7 @@ def test_bot_makes_first_bid():
 
     bid = bot.choose_bid(None)
 
-    assert bid.category == HandRank.ONE_PAIR
+    assert bid.category == HandRank.HIGH_CARD
     assert bid.values == (2,)
 
 

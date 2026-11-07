@@ -220,6 +220,9 @@ class GameState:
         if self.current_player.player_id != challenger_id:
             raise ValueError("It is not this player's turn.")
 
+        if self.bidder_id == challenger_id:
+            raise ValueError("A player cannot challenge their own bid.")
+
         bid = self.bid_manager.call_bullshit()
 
         bidder_id = self.bidder_id
