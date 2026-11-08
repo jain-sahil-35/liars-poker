@@ -23,17 +23,24 @@ function PlayingCard({
   const isRed = suit === '♥' || suit === '♦'
 
   return (
-    <div className="w-14 h-[78px] rounded-lg bg-[#f5f0df] text-gray-900 shadow-lg p-1.5 flex flex-col justify-between">
+    <div className="w-14 h-[78px] rounded-lg bg-[#f5f0df] text-gray-900 shadow-lg p-1.5 flex flex-col justify-between border border-black/10">
       <div>
-        <p className={`text-sm font-bold leading-none ${isRed ? 'text-red-600' : 'text-gray-900'}`}>
+        <p className={`text-sm font-bold leading-none ${
+          isRed ? 'text-red-600' : 'text-gray-900'
+        }`}>
           {rank}
         </p>
-        <p className={`text-sm leading-none ${isRed ? 'text-red-600' : 'text-gray-900'}`}>
+
+        <p className={`text-sm leading-none ${
+          isRed ? 'text-red-600' : 'text-gray-900'
+        }`}>
           {suit}
         </p>
       </div>
 
-      <span className={`text-2xl self-center ${isRed ? 'text-red-600' : 'text-gray-900'}`}>
+      <span className={`text-2xl self-center ${
+        isRed ? 'text-red-600' : 'text-gray-900'
+      }`}>
         {suit}
       </span>
     </div>

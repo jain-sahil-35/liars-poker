@@ -79,10 +79,15 @@ class GameState:
     def current_player(self):
         """Return the player whose turn it currently is."""
 
-        if not self.started or self.finished:
+        if not self.started or self.finished or self.round_resolved:
             return None
 
-        return self.active_players[self.current_turn_index]
+        active = self.active_players
+
+        if not active or not (0 <= self.current_turn_index < len(active)):
+            return None
+
+        return active[self.current_turn_index]
 
     def get_player(self, player_id):
 
