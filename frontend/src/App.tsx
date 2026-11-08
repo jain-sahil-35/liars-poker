@@ -63,6 +63,7 @@ function getSuitSymbol(suit: string) {
 
 function App() {
   const [game, setGame] = useState<GameState | null>(null)
+  const [playerName, setPlayerName] = useState('You')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
@@ -75,7 +76,7 @@ function App() {
 
     try {
       const newGame = await createGame({
-        player_name: 'You',
+        player_name: playerName.trim() || 'You',
         bot_personalities: [...BOT_PERSONALITIES],
       })
 
@@ -200,7 +201,7 @@ function App() {
     if (!player) return null
 
     return (
-      <div className={position}>
+      <div className={`table-seat ${position}`}>
         <PlayerSeat
           name={player.name}
           cards={player.card_count}
@@ -214,10 +215,10 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen bg-[#101713] text-white">
+    <main className="app-shell min-h-screen bg-[#101713] text-white">
 
       {/* Header */}
-      <header className="h-20 border-b border-white/10 px-6 lg:px-10 flex items-center justify-between">
+      <header className="app-header min-h-20 border-b border-white/10 px-4 sm:px-6 lg:px-10 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
             <Crown className="text-emerald-400" size={22} />
@@ -239,7 +240,7 @@ function App() {
         </div>
       </header>
 
-      <div className="max-w-[1500px] mx-auto p-5 lg:p-8 grid grid-cols-1 xl:grid-cols-[1fr_300px] gap-6">
+      <div className="max-w-[1500px] mx-auto p-3 sm:p-5 lg:p-8 grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_300px] gap-5 lg:gap-6">
 
         {/* Game area */}
         <section className="min-w-0">
@@ -261,7 +262,7 @@ function App() {
           </div>
 
           {/* Poker table */}
-          <div className="relative min-h-[550px] lg:min-h-[620px] rounded-[40px] border-[10px] border-[#493b26] bg-[#164a34] shadow-[inset_0_0_80px_rgba(0,0,0,0.45),0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden">
+          <div className="relative table-felt relative min-h-[550px] lg:min-h-[620px] rounded-[28px] sm:rounded-[40px] border-[10px] border-[#493b26] bg-[#164a34] shadow-[inset_0_0_80px_rgba(0,0,0,0.45),0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden">
 
             <div className="absolute inset-3 rounded-[32px] border border-white/10 pointer-events-none" />
 
@@ -277,22 +278,22 @@ function App() {
               <>
                 {renderPlayer(
                   topPlayer,
-                  'absolute top-5 left-1/2 -translate-x-1/2',
+                  'table-top absolute top-5 left-1/2 -translate-x-1/2',
                 )}
 
                 {renderPlayer(
                   leftPlayer,
-                  'absolute left-4 lg:left-10 top-1/2 -translate-y-1/2',
+                  'table-left absolute left-4 lg:left-10 top-1/2 -translate-y-1/2',
                 )}
 
                 {renderPlayer(
                   rightPlayer,
-                  'absolute right-4 lg:right-10 top-1/2 -translate-y-1/2',
+                  'table-right absolute right-4 lg:right-10 top-1/2 -translate-y-1/2',
                 )}
 
                 {/* Center area */}     
                 {/* Live Bid Display */}
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[52%] max-w-[560px] text-center">
+                <div className="table-center absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[52%] max-w-[560px] text-center">
 
                   <p className="text-emerald-200/50 text-[10px] tracking-[0.25em] mb-2">
                     LIVE BID
@@ -368,10 +369,12 @@ function App() {
                   </div>
 
                   <div className="flex justify-center items-center gap-2 mt-2">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className={`w-1.5 h-1.5 rounded-full ${actionLoading ? "bg-amber-300" : "bg-emerald-400"} animate-pulse`} />
 
                     <p className="text-[10px] text-emerald-100/70">
-                      {game.round_resolved
+                      {actionLoading
+                        ? 'Processing move…'
+                        : game.round_resolved
                         ? 'Round resolved'
                         : currentPlayer
                           ? currentPlayer.is_human
@@ -386,12 +389,15 @@ function App() {
 
 
                 {/* Human position */}
-                <div className="absolute bottom-5 left-1/2 -translate-x-1/2">
+                <div className="table-seat table-human absolute bottom-5 left-1/2 -translate-x-1/2">
                   <PlayerSeat
                     name={human?.name ?? 'You'}
                     cards={human?.card_count ?? 0}
                     isYou
                     isActive={game.current_player_id === 'human'}
+                    isEliminated={human?.eliminated ?? false}
+                    cardData={human?.cards}
+                    revealCards={game.cards_revealed}
                   />
                 </div>
               </>
@@ -487,19 +493,36 @@ function App() {
 
           {/* Start game */}
           {!game && (
-            <div className="mt-7 max-w-xl mx-auto">
+            <div className="landing-panel mt-7 max-w-2xl mx-auto rounded-3xl border border-emerald-400/20 bg-gradient-to-br from-[#1b3025] to-[#17221b] p-6 sm:p-9">
+              <div className="flex items-center gap-2 text-emerald-300 text-xs tracking-[0.25em] font-semibold">
+                <Sparkles size={15} /> THE TABLE IS YOURS
+              </div>
+              <h2 className="mt-4 text-3xl sm:text-4xl font-black tracking-tight">
+                Bluff your way to <span className="text-amber-300">victory.</span>
+              </h2>
+              <p className="mt-3 max-w-xl text-sm sm:text-base leading-relaxed text-emerald-100/65">
+                Read the table, make your claims, and decide when someone is pushing their luck.
+                Three bots. One table. No room for hesitation.
+              </p>
+              <label className="block mt-7">
+                <span className="block text-xs uppercase tracking-widest text-emerald-100/55 mb-2">Your table name</span>
+                <input
+                  value={playerName}
+                  onChange={(event) => setPlayerName(event.target.value)}
+                  maxLength={24}
+                  placeholder="Enter your name"
+                  className="w-full sm:max-w-sm rounded-xl border border-white/10 bg-[#101713]/80 px-4 py-3 text-white outline-none transition focus:border-emerald-400"
+                />
+              </label>
               <button
                 onClick={handleStartGame}
                 disabled={loading}
-                className="w-full flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-[#0c1b13] font-bold py-4 rounded-xl transition-colors"
+                className="mt-5 w-full sm:w-auto min-w-52 flex items-center justify-center gap-2 bg-emerald-400 hover:bg-emerald-300 disabled:opacity-50 text-[#0c1b13] font-bold px-7 py-4 rounded-xl transition-all hover:-translate-y-0.5"
               >
-                {loading ? (
-                  <RefreshCw size={18} className="animate-spin" />
-                ) : (
-                  <Play size={18} />
-                )}
-                {loading ? 'Creating Game...' : 'Start Match'}
+                {loading ? <RefreshCw size={18} className="animate-spin" /> : <Play size={18} />}
+                {loading ? 'Preparing the table…' : 'Enter the table'}
               </button>
+              <p className="mt-4 text-[11px] text-emerald-100/35">Practice match · 4 players · Against AI opponents</p>
             </div>
           )}
 
@@ -609,7 +632,7 @@ function App() {
               <h3 className="font-semibold">Activity Log</h3>
             </div>
 
-            <div className="space-y-4 text-sm">
+            <div className="activity-list space-y-4 text-sm max-h-[520px] overflow-y-auto pr-1">
               {game?.activity.length ? (
                 game.activity.slice().reverse().map((entry, index) => (
                   <div

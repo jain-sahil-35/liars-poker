@@ -53,7 +53,7 @@ function PlayerSeat({
 
   return (
     <div
-      className={`flex flex-col items-center gap-2 transition-all ${
+      className={`animate-seat flex flex-col items-center gap-2 transition-all ${
         isEliminated
           ? 'opacity-40 grayscale'
           : isActive

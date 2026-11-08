@@ -1,6 +1,6 @@
 
 import { useState } from 'react'
-import { ArrowUp, Check, ChevronDown } from 'lucide-react'
+import { ArrowUp, ChevronDown } from 'lucide-react'
 
 type BidCategory =
   | 'HIGH_CARD'
