@@ -1,6 +1,7 @@
+
 from itertools import combinations
 
-from game.bidding import Bid
+from game.bidding import Bid, BID_VALUE_COUNTS
 from game.hand_evaluator import HandRank, evaluate_five
 
 
@@ -24,10 +25,14 @@ def claim_exists(cards, bid):
     exists among all the revealed cards.
     """
 
-    required = CLAIM_CARD_COUNTS[bid.category]
+    if not isinstance(bid, Bid):
+        raise TypeError("Expected a Bid object.")
 
-    if len(cards) < required:
+    if len(cards) < CLAIM_CARD_COUNTS[bid.category]:
         return False
+
+    required = CLAIM_CARD_COUNTS[bid.category]
+    value_count = BID_VALUE_COUNTS[bid.category]
 
     for combo in combinations(cards, required):
 
@@ -36,9 +41,7 @@ def claim_exists(cards, bid):
         if result[0] != bid.category:
             continue
 
-        actual_values = tuple(
-            result[1:1 + len(bid.values)]
-        )
+        actual_values = tuple(result[1:1 + value_count])
 
         if actual_values == bid.values:
             return True

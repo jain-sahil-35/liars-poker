@@ -17,8 +17,14 @@ RANKS = {
 BID_CATEGORIES = {
     "1": HandRank.HIGH_CARD,
     "2": HandRank.ONE_PAIR,
-    "3": HandRank.THREE_OF_A_KIND,
-    "4": HandRank.FOUR_OF_A_KIND
+    "3": HandRank.TWO_PAIR,
+    "4": HandRank.THREE_OF_A_KIND,
+    "5": HandRank.STRAIGHT,
+    "6": HandRank.FLUSH,
+    "7": HandRank.FULL_HOUSE,
+    "8": HandRank.FOUR_OF_A_KIND,
+    "9": HandRank.STRAIGHT_FLUSH,
+    "10": HandRank.ROYAL_FLUSH
 }
 
 
@@ -97,34 +103,97 @@ def display_bid(bid):
     return f"{category} - {values}"
 
 
+
 def get_human_bid(current_bid, input_fn=input):
     """Read and validate a human player's bid."""
+
+    category_names = {
+        "1": "High Card",
+        "2": "One Pair",
+        "3": "Two Pair",
+        "4": "Three of a Kind",
+        "5": "Straight",
+        "6": "Flush",
+        "7": "Full House",
+        "8": "Four of a Kind",
+        "9": "Straight Flush",
+        "10": "Royal Flush"
+    }
+
+    value_counts = {
+        HandRank.HIGH_CARD: 1,
+        HandRank.ONE_PAIR: 1,
+        HandRank.TWO_PAIR: 2,
+        HandRank.THREE_OF_A_KIND: 1,
+        HandRank.STRAIGHT: 1,
+        HandRank.FLUSH: 5,
+        HandRank.FULL_HOUSE: 2,
+        HandRank.FOUR_OF_A_KIND: 1,
+        HandRank.STRAIGHT_FLUSH: 1,
+        HandRank.ROYAL_FLUSH: 0
+    }
+
+    def read_rank(prompt):
+        while True:
+            rank = input_fn(prompt).strip().upper()
+
+            if rank in RANKS:
+                return RANKS[rank]
+
+            print("Invalid rank. Choose from 2-10, J, Q, K, A.")
 
     while True:
 
         print("\nAvailable claims:")
-        print("1. High Card")
-        print("2. One Pair")
-        print("3. Three of a Kind")
-        print("4. Four of a Kind")
+
+        for key, name in category_names.items():
+            print(f"{key}. {name}")
 
         category_choice = choose_option(
             "Choose category: ",
-            ["1", "2", "3", "4"],
+            list(category_names.keys()),
             input_fn
         )
 
         category = BID_CATEGORIES[category_choice]
+        count = value_counts[category]
 
-        rank = input_fn(
-            "Choose rank (2-10, J, Q, K, A): "
-        ).strip().upper()
+        values = []
 
-        if rank not in RANKS:
-            print("Invalid rank.")
+        if category == HandRank.TWO_PAIR:
+            print("Enter the higher pair rank first.")
+
+        elif category == HandRank.FULL_HOUSE:
+            print("Enter the three-of-a-kind rank first, then the pair rank.")
+
+        elif category == HandRank.FLUSH:
+            print("Enter all five ranks in descending order.")
+
+        for i in range(count):
+
+            if category == HandRank.TWO_PAIR:
+                prompt = f"Pair {i + 1} rank: "
+
+            elif category == HandRank.FULL_HOUSE:
+                prompt = (
+                    "Three-of-a-kind rank: "
+                    if i == 0 else "Pair rank: "
+                )
+
+            elif category == HandRank.FLUSH:
+                prompt = f"Flush card {i + 1} rank: "
+
+            else:
+                prompt = "Choose rank (2-10, J, Q, K, A): "
+
+            values.append(read_rank(prompt))
+
+        try:
+            bid = Bid(category, tuple(values))
+
+        except ValueError as error:
+            print(f"Invalid bid: {error}")
             continue
-
-        bid = Bid(category, (RANKS[rank],))
 
         if current_bid is not None and not current_bid < bid:
             print("Your bid must be higher than the current bid.")
@@ -148,11 +217,15 @@ def play_human_turn(game, input_fn=input):
 
         print("Last bidder:", game.bidder_id)
 
-    action = choose_option(
-        "\n1. Make a higher bid\n2. Call Bullshit\nChoice: ",
-        ["1", "2"],
-        input_fn
-    )
+    if game.bid_manager.current_bid is None:
+        action = "1"
+
+    else:
+        action = choose_option(
+            "\n1. Make a higher bid\n2. Call Bullshit\nChoice: ",
+            ["1", "2"],
+            input_fn
+        )
 
     if action == "1":
 
