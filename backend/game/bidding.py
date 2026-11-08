@@ -15,7 +15,7 @@ BID_VALUE_COUNTS = {
     HandRank.FULL_HOUSE: 2,
     HandRank.FOUR_OF_A_KIND: 1,
     HandRank.STRAIGHT_FLUSH: 1,
-    HandRank.ROYAL_FLUSH: 0,
+    HandRank.ROYAL_FLUSH: 1,
 }
 
 
@@ -43,6 +43,13 @@ class Bid:
 
             if not isinstance(rank, Rank):
                 raise TypeError("Flush high card must be a Rank.")
+
+            return
+
+        # Royal Flush: (Suit,)
+        if self.category == HandRank.ROYAL_FLUSH:
+            if not isinstance(self.values[0], Suit):
+                raise TypeError("Royal Flush suit must be a Suit.")
 
             return
 
@@ -78,8 +85,13 @@ class Bid:
     @property
     def strength(self):
         """Return a comparable numerical representation."""
+
         if self.category == HandRank.FLUSH:
             return (int(self.category), int(self.values[1]))
+
+        # Royal Flush suits have equal bidding strength.
+        if self.category == HandRank.ROYAL_FLUSH:
+            return (int(self.category),)
 
         return (int(self.category), *self.values)
 
@@ -106,6 +118,10 @@ class Bid:
         if self.category == HandRank.FLUSH:
             suit, rank = self.values
             return f"Flush - {suit.value} - {rank.name}"
+
+        if self.category == HandRank.ROYAL_FLUSH:
+            suit = self.values[0]
+            return f"Royal Flush - {suit.value}"
 
         return f"{names[self.category]} - {self.values}"
 

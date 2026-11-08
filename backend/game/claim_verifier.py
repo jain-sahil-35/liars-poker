@@ -15,7 +15,7 @@ CLAIM_CARD_COUNTS = {
     HandRank.FULL_HOUSE: 5,
     HandRank.FOUR_OF_A_KIND: 4,
     HandRank.STRAIGHT_FLUSH: 5,
-    HandRank.ROYAL_FLUSH: 5,
+    HandRank.ROYAL_FLUSH: 5
 }
 
 
@@ -28,13 +28,10 @@ def claim_exists(cards, bid):
     if not isinstance(bid, Bid):
         raise TypeError("Expected a Bid object.")
 
-    if len(cards) < CLAIM_CARD_COUNTS[bid.category]:
-        return False
+    required = CLAIM_CARD_COUNTS[bid.category]
 
-    # Flush uses custom bidding rules:
-    # (Suit, Rank) means at least five cards of that
-    # suit with ranks <= the declared rank, including
-    # at least one card of the declared rank.
+    # Flush claims count only cards of the declared suit
+    # whose ranks are at or below the declared high card.
     if bid.category == HandRank.FLUSH:
         suit, high_card = bid.values
 
@@ -54,16 +51,30 @@ def claim_exists(cards, bid):
             and has_declared_high_card
         )
 
-    required = CLAIM_CARD_COUNTS[bid.category]
-    value_count = BID_VALUE_COUNTS[bid.category]
+    if len(cards) < required:
+        return False
 
     for combo in combinations(cards, required):
+
         result = evaluate_five(list(combo))
 
         if result[0] != bid.category:
             continue
 
-        actual_values = tuple(result[1:1 + value_count])
+        # Royal Flush must match the specifically claimed suit.
+        if bid.category == HandRank.ROYAL_FLUSH:
+            claimed_suit = bid.values[0]
+
+            if not all(card.suit == claimed_suit for card in combo):
+                continue
+
+            return True
+
+        value_count = BID_VALUE_COUNTS[bid.category]
+
+        actual_values = tuple(
+            result[1:1 + value_count]
+        )
 
         if actual_values == bid.values:
             return True

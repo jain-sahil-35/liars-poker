@@ -190,7 +190,7 @@ def test_challenge_marks_round_resolved():
     ]
 
     # An impossible Royal Flush claim.
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
 
     game.place_bid("p1", bid)
     game.next_turn()
@@ -222,7 +222,7 @@ def test_next_round_deals_extra_card_to_loser():
         make_card(2, Suit.CLUBS)
     ]
 
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
 
     game.place_bid("p1", bid)
     game.next_turn()
@@ -256,7 +256,7 @@ def test_next_round_starts_left_of_loser():
         make_card(2, Suit.CLUBS)
     ]
 
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
 
     game.place_bid("p1", bid)
     game.next_turn()
@@ -287,7 +287,7 @@ def test_round_flag_resets_for_next_round():
         make_card(2, Suit.CLUBS)
     ]
 
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
 
     game.place_bid("p1", bid)
     game.next_turn()
@@ -341,7 +341,7 @@ def test_losing_with_five_cards_causes_elimination():
         make_card(2, Suit.DIAMONDS)
     ]
 
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
 
     game.place_bid("p1", bid)
     game.next_turn()
@@ -378,7 +378,7 @@ def test_game_ends_when_only_one_player_remains():
         make_card(11, Suit.CLUBS)
     ]
 
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
 
     game.place_bid("p1", bid)
     game.next_turn()
@@ -457,7 +457,7 @@ def test_challenge_updates_bidder_bluff_statistics():
     game.start_game()
 
     bidder = game.current_player
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
 
     game.place_bid(bidder.player_id, bid)
 
@@ -482,7 +482,7 @@ def test_challenge_updates_challenger_statistics():
     game.start_game()
 
     bidder = game.current_player
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
 
     game.place_bid(bidder.player_id, bid)
 
@@ -651,7 +651,7 @@ def test_successful_bot_challenge_updates_statistics(monkeypatch):
     ]
 
     # This claim is impossible.
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
 
     game.place_bid("p1", bid)
     game.next_turn()

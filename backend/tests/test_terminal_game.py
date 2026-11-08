@@ -52,7 +52,7 @@ def test_human_can_make_full_house_bid():
 
 
 def test_human_can_make_royal_flush_bid():
-    inputs = iter(["10"])
+    inputs = iter(["10", "1"])
 
     bid = get_human_bid(
         current_bid=None,
@@ -60,4 +60,4 @@ def test_human_can_make_royal_flush_bid():
     )
 
     assert bid.category == HandRank.ROYAL_FLUSH
-    assert bid.values == ()
+    assert bid.values == (Suit.HEARTS,)

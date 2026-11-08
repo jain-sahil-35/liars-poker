@@ -95,8 +95,11 @@ class Bot:
         for high in range(6, 14):
             candidates.append(Bid(HandRank.STRAIGHT_FLUSH, (high,)))
 
-        # Royal Flush
-        candidates.append(Bid(HandRank.ROYAL_FLUSH, ()))
+        # Royal Flush: generate one candidate for each suit.
+        for suit in Suit:
+            candidates.append(
+                Bid(HandRank.ROYAL_FLUSH, (suit,))
+            )
 
         return candidates
 

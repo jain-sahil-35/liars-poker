@@ -135,7 +135,7 @@ def test_royal_flush_claim():
         make_card(10, Suit.SPADES)
     ]
 
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.SPADES,))
 
     assert claim_exists(cards, bid) is True
 

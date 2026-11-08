@@ -156,7 +156,7 @@ def get_human_bid(current_bid, input_fn=input):
             "4": Suit.SPADES
         }
 
-        print("\nChoose Flush suit:")
+        print("\nChoose suit:")
         print("1. Hearts")
         print("2. Diamonds")
         print("3. Clubs")
@@ -192,6 +192,10 @@ def get_human_bid(current_bid, input_fn=input):
             ))
 
             values = (suit, high_card)
+
+        elif category == HandRank.ROYAL_FLUSH:
+            suit = read_suit()
+            values = (suit,)
 
         else:
             count = value_counts[category]

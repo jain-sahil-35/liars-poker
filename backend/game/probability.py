@@ -201,18 +201,15 @@ def _claim_exists_fast(cards, bid):
 
     if category == HandRank.ROYAL_FLUSH:
         required = {10, 11, 12, 13, 14}
+        claimed_suit = values[0]
 
-        for suit in Suit:
-            available = {
-                card.rank.value
-                for card in cards
-                if card.suit == suit
-            }
+        available = {
+            card.rank.value
+            for card in cards
+            if card.suit == claimed_suit
+        }
 
-            if required.issubset(available):
-                return True
-
-        return False
+        return required.issubset(available)
 
     return False
 
@@ -224,96 +221,96 @@ def probability_of_claim(
     simulations: int = 5000,
     rng=None
 ) -> float:
-    """
-    Estimate the probability that a bid exists among all cards in play.
+        """
+        Estimate the probability that a bid exists among all cards in play.
 
-    Uses exact hypergeometric calculations for rank-based claims
-    and Monte Carlo simulation for other categories.
-    """
+        Uses exact hypergeometric calculations for rank-based claims
+        and Monte Carlo simulation for other categories.
+        """
 
-    if not isinstance(bid, Bid):
-        raise TypeError("Expected a Bid object.")
+        if not isinstance(bid, Bid):
+            raise TypeError("Expected a Bid object.")
 
-    if not 0 <= total_cards <= 52:
-        raise ValueError("Total cards must be between 0 and 52.")
+        if not 0 <= total_cards <= 52:
+            raise ValueError("Total cards must be between 0 and 52.")
 
-    if len(player_cards) > total_cards:
-        raise ValueError("Player cannot hold more cards than are in play.")
+        if len(player_cards) > total_cards:
+            raise ValueError("Player cannot hold more cards than are in play.")
 
-    if any(not isinstance(card, Card) for card in player_cards):
-        raise TypeError("All player cards must be Card objects.")
+        if any(not isinstance(card, Card) for card in player_cards):
+            raise TypeError("All player cards must be Card objects.")
 
-    if len(set(player_cards)) != len(player_cards):
-        raise ValueError("Player cards cannot contain duplicates.")
+        if len(set(player_cards)) != len(player_cards):
+            raise ValueError("Player cards cannot contain duplicates.")
 
-    if not isinstance(simulations, int) or isinstance(simulations, bool):
-        raise TypeError("Simulations must be an integer.")
+        if not isinstance(simulations, int) or isinstance(simulations, bool):
+            raise TypeError("Simulations must be an integer.")
 
-    if simulations <= 0:
-        raise ValueError("Simulations must be positive.")
+        if simulations <= 0:
+            raise ValueError("Simulations must be positive.")
 
-    required_cards = {
-        HandRank.HIGH_CARD: 1,
-        HandRank.ONE_PAIR: 2,
-        HandRank.TWO_PAIR: 4,
-        HandRank.THREE_OF_A_KIND: 3,
-        HandRank.STRAIGHT: 5,
-        HandRank.FLUSH: 5,
-        HandRank.FULL_HOUSE: 5,
-        HandRank.FOUR_OF_A_KIND: 4,
-        HandRank.STRAIGHT_FLUSH: 5,
-        HandRank.ROYAL_FLUSH: 5,
-    }[bid.category]
+        required_cards = {
+            HandRank.HIGH_CARD: 1,
+            HandRank.ONE_PAIR: 2,
+            HandRank.TWO_PAIR: 4,
+            HandRank.THREE_OF_A_KIND: 3,
+            HandRank.STRAIGHT: 5,
+            HandRank.FLUSH: 5,
+            HandRank.FULL_HOUSE: 5,
+            HandRank.FOUR_OF_A_KIND: 4,
+            HandRank.STRAIGHT_FLUSH: 5,
+            HandRank.ROYAL_FLUSH: 5,
+        }[bid.category]
 
-    if total_cards < required_cards:
-        return 0.0
+        if total_cards < required_cards:
+            return 0.0
 
-    # These categories can be calculated exactly.
-    rank_claims = {
-        HandRank.HIGH_CARD: 1,
-        HandRank.ONE_PAIR: 2,
-        HandRank.THREE_OF_A_KIND: 3,
-        HandRank.FOUR_OF_A_KIND: 4,
-    }
+        # These categories can be calculated exactly.
+        rank_claims = {
+            HandRank.HIGH_CARD: 1,
+            HandRank.ONE_PAIR: 2,
+            HandRank.THREE_OF_A_KIND: 3,
+            HandRank.FOUR_OF_A_KIND: 4,
+        }
 
-    if bid.category in rank_claims:
-        return probability_of_rank_claim(
-            player_cards,
-            total_cards,
-            Rank(bid.values[0]),
-            rank_claims[bid.category]
-        )
+        if bid.category in rank_claims:
+            return probability_of_rank_claim(
+                player_cards,
+                total_cards,
+                Rank(bid.values[0]),
+                rank_claims[bid.category]
+            )
 
-    # Build the unseen portion of the standard deck.
-    full_deck = [
-        Card(rank, suit)
-        for rank in Rank
-        for suit in Suit
-    ]
+        # Build the unseen portion of the standard deck.
+        full_deck = [
+            Card(rank, suit)
+            for rank in Rank
+            for suit in Suit
+        ]
 
-    known_cards = set(player_cards)
+        known_cards = set(player_cards)
 
-    unknown_deck = [
-        card for card in full_deck
-        if card not in known_cards
-    ]
+        unknown_deck = [
+            card for card in full_deck
+            if card not in known_cards
+        ]
 
-    unknown_count = total_cards - len(player_cards)
+        unknown_count = total_cards - len(player_cards)
 
-    if rng is None:
-        rng = random
+        if rng is None:
+            rng = random
 
-    successful_simulations = 0
+        successful_simulations = 0
 
-    for _ in range(simulations):
-        sampled_cards = rng.sample(
-            unknown_deck,
-            unknown_count
-        )
+        for _ in range(simulations):
+            sampled_cards = rng.sample(
+                unknown_deck,
+                unknown_count
+            )
 
-        all_cards = player_cards + sampled_cards
+            all_cards = player_cards + sampled_cards
 
-        if _claim_exists_fast(all_cards, bid):
-            successful_simulations += 1
+            if _claim_exists_fast(all_cards, bid):
+                successful_simulations += 1
 
-    return successful_simulations / simulations
+        return successful_simulations / simulations

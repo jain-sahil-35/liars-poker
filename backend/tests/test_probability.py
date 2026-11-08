@@ -163,7 +163,7 @@ def test_probability_of_impossible_claim():
         Card(Rank.THREE, Suit.SPADES)
     ]
 
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
 
     assert probability_of_claim(cards, 4, bid) == 0.0
 
@@ -177,7 +177,7 @@ def test_probability_of_guaranteed_royal_flush():
         Card(Rank.TEN, Suit.SPADES)
     ]
 
-    bid = Bid(HandRank.ROYAL_FLUSH, ())
+    bid = Bid(HandRank.ROYAL_FLUSH, (Suit.SPADES,))
 
     assert probability_of_claim(cards, 5, bid) == 1.0
 
@@ -285,7 +285,7 @@ def test_fast_claim_checker_matches_original_verifier():
         Bid(HandRank.FULL_HOUSE, (14, 13)),
         Bid(HandRank.FOUR_OF_A_KIND, (14,)),
         Bid(HandRank.STRAIGHT_FLUSH, (14,)),
-        Bid(HandRank.ROYAL_FLUSH, ())
+        Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
     ]
 
     for bid in bids:
@@ -311,7 +311,7 @@ def test_fast_checker_matches_original_on_random_card_sets():
         Bid(HandRank.FULL_HOUSE, (7, 14)),
         Bid(HandRank.FOUR_OF_A_KIND, (11,)),
         Bid(HandRank.STRAIGHT_FLUSH, (9,)),
-        Bid(HandRank.ROYAL_FLUSH, ())
+        Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
     ]
 
     for _ in range(200):
@@ -355,3 +355,60 @@ def test_fast_checker_rejects_ace_low_straight():
 
     assert _claim_exists_fast(cards, bid) is False
     assert _claim_exists_fast(cards, bid) == claim_exists(cards, bid)
+
+
+def test_royal_flush_requires_the_claimed_suit():
+    cards = [
+        Card(Rank.TEN, Suit.SPADES),
+        Card(Rank.JACK, Suit.SPADES),
+        Card(Rank.QUEEN, Suit.SPADES),
+        Card(Rank.KING, Suit.SPADES),
+        Card(Rank.ACE, Suit.SPADES),
+    ]
+
+    hearts_bid = Bid(
+        HandRank.ROYAL_FLUSH,
+        (Suit.HEARTS,)
+    )
+
+    spades_bid = Bid(
+        HandRank.ROYAL_FLUSH,
+        (Suit.SPADES,)
+    )
+
+    assert _claim_exists_fast(cards, hearts_bid) is False
+    assert _claim_exists_fast(cards, spades_bid) is True
+
+
+def test_original_verifier_checks_royal_flush_suit():
+    cards = [
+        Card(Rank.TEN, Suit.SPADES),
+        Card(Rank.JACK, Suit.SPADES),
+        Card(Rank.QUEEN, Suit.SPADES),
+        Card(Rank.KING, Suit.SPADES),
+        Card(Rank.ACE, Suit.SPADES),
+    ]
+
+    hearts_bid = Bid(
+        HandRank.ROYAL_FLUSH,
+        (Suit.HEARTS,)
+    )
+
+    assert claim_exists(cards, hearts_bid) is False
+
+
+def test_probability_rejects_royal_flush_in_wrong_suit():
+    cards = [
+        Card(Rank.TEN, Suit.SPADES),
+        Card(Rank.JACK, Suit.SPADES),
+        Card(Rank.QUEEN, Suit.SPADES),
+        Card(Rank.KING, Suit.SPADES),
+        Card(Rank.ACE, Suit.SPADES),
+    ]
+
+    hearts_bid = Bid(
+        HandRank.ROYAL_FLUSH,
+        (Suit.HEARTS,)
+    )
+
+    assert probability_of_claim(cards, 5, hearts_bid) == 0.0
