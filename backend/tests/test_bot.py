@@ -27,57 +27,76 @@ def test_bot_personality():
     assert bot.personality == BotPersonality.AGGRESSIVE
 
 
-def test_bot_makes_first_bid():
-
+def test_bot_makes_first_bid(monkeypatch):
     bot = create_bot(BotPersonality.CONSERVATIVE)
 
-    bid = bot.choose_bid(None)
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args, **kwargs: 0.90
+    )
 
-    assert bid.category == HandRank.HIGH_CARD
-    assert bid.values == (2,)
+    bid = bot.choose_bid(None, total_cards=6)
+
+    assert isinstance(bid, Bid)
+    assert bot.last_bid_probability == 0.90
 
 
-def test_bot_raises_current_bid():
-
+def test_bot_raises_current_bid(monkeypatch):
     bot = create_bot(BotPersonality.CONSERVATIVE)
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args, **kwargs: 0.90
+    )
 
     current_bid = Bid(HandRank.ONE_PAIR, (10,))
-
-    new_bid = bot.choose_bid(current_bid)
+    new_bid = bot.choose_bid(current_bid, total_cards=6)
 
     assert new_bid > current_bid
 
 
-def test_conservative_bot_chooses_smallest_raise():
-
+def test_conservative_bot_chooses_confident_raise(monkeypatch):
     bot = create_bot(BotPersonality.CONSERVATIVE)
 
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args, **kwargs: 0.90
+    )
+
     current_bid = Bid(HandRank.ONE_PAIR, (10,))
+    new_bid = bot.choose_bid(current_bid, total_cards=6)
 
-    new_bid = bot.choose_bid(current_bid)
+    assert new_bid > current_bid
+    assert bot.last_bid_probability >= 0.75
 
-    assert new_bid == Bid(HandRank.ONE_PAIR, (11,))
 
-
-def test_aggressive_bot_chooses_higher_bid():
-
+def test_aggressive_bot_chooses_higher_bid(monkeypatch):
     bot = create_bot(BotPersonality.AGGRESSIVE)
 
-    current_bid = Bid(HandRank.ONE_PAIR, (10,))
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args, **kwargs: 0.50
+    )
 
-    new_bid = bot.choose_bid(current_bid)
+    current_bid = Bid(HandRank.ONE_PAIR, (10,))
+    new_bid = bot.choose_bid(current_bid, total_cards=6)
 
     assert new_bid > current_bid
+    assert bot.last_bid_probability >= 0.35
 
 
-def test_bot_decision_format():
-
+def test_bot_decision_format(monkeypatch):
     bot = create_bot(BotPersonality.CONSERVATIVE)
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args, **kwargs: 0.90
+    )
 
     action, bid = bot.decide_action(None, 6)
 
     assert action == "bid"
-    assert bid is not None
+    assert isinstance(bid, Bid)
 
 
 def test_bot_statistics():
@@ -238,7 +257,13 @@ def test_bot_generates_flush_bids_for_all_suits_and_ranks():
 
 
 
-def test_bot_can_raise_to_two_pair():
+def test_bot_can_raise_to_two_pair(monkeypatch):
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args, **kwargs: 0.90
+    )
+
     bot = create_bot(BotPersonality.CONSERVATIVE)
 
     current_bid = Bid(HandRank.ONE_PAIR, (14,))
@@ -247,13 +272,18 @@ def test_bot_can_raise_to_two_pair():
     assert new_bid > current_bid
 
 
-def test_bot_can_raise_to_flush():
+def test_bot_can_raise_to_flush(monkeypatch):
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args, **kwargs: 0.90
+    )
+
     bot = create_bot(BotPersonality.CONSERVATIVE)
 
     current_bid = Bid(HandRank.FULL_HOUSE, (14, 13))
     new_bid = bot.choose_bid(current_bid)
 
-    assert new_bid.category == HandRank.FOUR_OF_A_KIND
     assert new_bid > current_bid
 
 
@@ -357,3 +387,59 @@ def test_detective_adjusts_complex_claim_suspicion(monkeypatch):
 
     # Historical behaviour increases suspicion.
     assert detective.should_challenge(bid, 12, "alice") is True
+
+def test_bot_uses_own_cards_to_rank_candidates():
+    player = Player(
+        "bot1",
+        "Test Bot",
+        cards=[
+            Card(Rank.KING, Suit.HEARTS),
+            Card(Rank.KING, Suit.SPADES),
+        ]
+    )
+
+    bot = Bot(player, BotPersonality.CONSERVATIVE)
+
+    pair_of_kings = Bid(HandRank.ONE_PAIR, (13,))
+    pair_of_queens = Bid(HandRank.ONE_PAIR, (12,))
+
+    assert bot._card_support(pair_of_kings) > bot._card_support(pair_of_queens)
+
+
+def test_bot_uses_suit_for_flush_support():
+    player = Player(
+        "bot1",
+        "Test Bot",
+        cards=[
+            Card(Rank.KING, Suit.HEARTS),
+            Card(Rank.QUEEN, Suit.HEARTS),
+            Card(Rank.JACK, Suit.HEARTS),
+        ]
+    )
+
+    bot = Bot(player, BotPersonality.CONSERVATIVE)
+
+    hearts_flush = Bid(
+        HandRank.FLUSH,
+        (Suit.HEARTS, Rank.QUEEN)
+    )
+
+    spades_flush = Bid(
+        HandRank.FLUSH,
+        (Suit.SPADES, Rank.QUEEN)
+    )
+
+    assert bot._card_support(hearts_flush) > bot._card_support(spades_flush)
+
+
+def test_bot_records_probability_of_selected_bid(monkeypatch):
+    bot = create_bot(BotPersonality.DETECTIVE)
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args, **kwargs: 0.80
+    )
+
+    bot.choose_bid(None, total_cards=6)
+
+    assert bot.last_bid_probability == 0.80

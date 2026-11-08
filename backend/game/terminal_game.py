@@ -330,9 +330,29 @@ def run_game(input_fn=input):
 
             bot = game.bots[current_player.player_id]
 
-            print(f"\n{bot.name} is thinking...")
+            print("\n" + "=" * 40)
+            print(f"BOT DECISION: {bot.name}")
+            print(f"Personality: {bot.personality.value}")
+
+            current_bid = game.bid_manager.current_bid
+
+            if current_bid is not None:
+                print(f"Evaluating claim: {display_bid(current_bid)}")
 
             action, result = game.process_bot_turn()
+
+            if bot.last_claim_probability is not None:
+                print(
+                    f"Estimated claim probability: "
+                    f"{bot.last_claim_probability:.1%}"
+                )
+                print(
+                    f"Challenge threshold: "
+                    f"{bot.last_challenge_threshold:.1%}"
+                )
+
+            print(f"Decision: {action.upper()}")
+            print("=" * 40)
 
             if action == "bid":
                 print(f"{bot.name} bids: {display_bid(result)}")
