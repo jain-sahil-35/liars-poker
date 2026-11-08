@@ -16,6 +16,7 @@ import PlayerSeat from './components/PlayerSeat'
 
 import {
   createGame,
+  advanceBot,
   type GameState,
   type CardData,
 } from './services/gameApi'
@@ -67,8 +68,33 @@ function App() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
+  const [actionStatus, setActionStatus] = useState('')
   const [challengeResult, setChallengeResult] =
     useState<ChallengeResponse['challenge_result'] | null>(null)
+
+  // Execute bot moves individually so each action appears on the table.
+  const runBotTurnsStepByStep = async (initialState: GameState) => {
+    let state = initialState
+
+    while (
+      state.current_player_id &&
+      state.current_player_id !== 'human' &&
+      !state.round_resolved &&
+      !state.finished
+    ) {
+      const actingPlayer = state.players.find(
+        (player) => player.player_id === state.current_player_id,
+      )
+
+      setActionStatus(`${actingPlayer?.name ?? 'Bot'} is thinking...`)
+      await new Promise((resolve) => setTimeout(resolve, 1500))
+
+      state = await advanceBot(state.game_id)
+      setGame(state)
+    }
+
+    return state
+  }
 
   const handleStartGame = async () => {
     setLoading(true)
@@ -96,18 +122,21 @@ function App() {
     if (!game) return
 
     setActionLoading(true)
+    setActionStatus('Submitting bid...')
     setError('')
     setChallengeResult(null)
 
     try {
       const updatedGame = await placeBid(game.game_id, bid)
       setGame(updatedGame)
+      await runBotTurnsStepByStep(updatedGame)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not place bid.',
       )
     } finally {
       setActionLoading(false)
+      setActionStatus('')
     }
   }
 
@@ -115,6 +144,7 @@ function App() {
     if (!game) return
 
     setActionLoading(true)
+    setActionStatus('Revealing cards...')
     setError('')
 
     try {
@@ -128,6 +158,7 @@ function App() {
       )
     } finally {
       setActionLoading(false)
+      setActionStatus('')
     }
   }
 
@@ -135,18 +166,21 @@ function App() {
     if (!game) return
 
     setActionLoading(true)
+    setActionStatus('Preparing next round...')
     setError('')
     setChallengeResult(null)
 
     try {
       const updatedGame = await startNextRound(game.game_id)
       setGame(updatedGame)
+      await runBotTurnsStepByStep(updatedGame)
     } catch (err) {
       setError(
         err instanceof Error ? err.message : 'Could not start next round.',
       )
     } finally {
       setActionLoading(false)
+      setActionStatus('')
     }
   }
 
@@ -373,7 +407,7 @@ function App() {
 
                     <p className="text-[10px] text-emerald-100/70">
                       {actionLoading
-                        ? 'Processing move…'
+                        ? actionStatus || 'Processing move…'
                         : game.round_resolved
                         ? 'Round resolved'
                         : currentPlayer
@@ -450,7 +484,7 @@ function App() {
                     disabled={!canPlay || !game.current_bid}
                     className="w-full flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 disabled:opacity-40 disabled:cursor-not-allowed text-red-300 font-bold py-4 rounded-xl transition-colors"
                   >
-                    Bullshit!
+                    {actionLoading && actionStatus === 'Revealing cards...' ? 'Revealing cards...' : 'Bullshit!'}
                   </button>
                 </>
               )}

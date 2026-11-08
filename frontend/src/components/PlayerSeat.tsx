@@ -95,6 +95,12 @@ function PlayerSeat({
         }`}>
           {isEliminated ? 'Eliminated' : `${cards} cards`}
         </p>
+
+        {isActive && !isEliminated && (
+          <p className="mt-1 text-[9px] font-bold tracking-widest text-amber-300">
+            {isYou ? 'YOUR TURN' : 'THINKING'}
+          </p>
+        )}
       </div>
 
       {/* Cards */}

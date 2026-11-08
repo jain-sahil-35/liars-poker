@@ -207,36 +207,6 @@ def create_bid(request: PlaceBidRequest) -> Bid:
         )
 
 
-def process_bot_turns(game_id: str, game: GameState):
-    """Keep processing bots until it is the human's turn."""
-
-    while (
-        not game.finished
-        and not game.round_resolved
-        and game.current_player is not None
-        and game.current_player.player_id != "human"
-    ):
-        bot = game.bots[game.current_player.player_id]
-
-        action, result = game.process_bot_turn()
-
-        if action == "bid":
-            game_activity[game_id].append({
-                "player": bot.name,
-                "action": "bid",
-                "description": str(result),
-                "probability": bot.last_bid_probability,
-            })
-
-        elif action == "challenge":
-            game_activity[game_id].append({
-                "player": bot.name,
-                "action": "challenge",
-                "description": "Called Bullshit!",
-                "claim_is_true": result.claim_is_true,
-                "loser_id": result.loser_id,
-            })
-
 
 # --------------------------------------------------
 # ROUTES
@@ -309,7 +279,7 @@ def get_game_state(game_id: str):
 
 @app.post("/games/{game_id}/bid")
 def place_bid(game_id: str, request: PlaceBidRequest):
-    """Accept a human bid and process subsequent bot turns."""
+    """Accept a human bid. Bot turns are advanced separately by the frontend."""
 
     game = get_game(game_id)
 
@@ -337,13 +307,64 @@ def place_bid(game_id: str, request: PlaceBidRequest):
             "description": str(bid),
         })
 
-        process_bot_turns(game_id, game)
 
     except ValueError as error:
         raise HTTPException(
             status_code=400,
             detail=str(error),
         )
+
+    return serialize_game(game_id, game)
+
+
+@app.post("/games/{game_id}/advance-bot")
+def advance_bot(game_id: str):
+    """Execute exactly one bot action and return the updated game state."""
+
+    game = get_game(game_id)
+
+    if game.finished or game.round_resolved:
+        raise HTTPException(
+            status_code=400,
+            detail="The round is not accepting bot actions.",
+        )
+
+    current_player = game.current_player
+
+    if current_player is None or current_player.player_id == "human":
+        raise HTTPException(
+            status_code=400,
+            detail="It is not a bot's turn.",
+        )
+
+    bot = game.bots.get(current_player.player_id)
+
+    if bot is None:
+        raise HTTPException(
+            status_code=400,
+            detail="The current player is not a registered bot.",
+        )
+
+    try:
+        action, result = game.process_bot_turn()
+    except ValueError as error:
+        raise HTTPException(status_code=400, detail=str(error))
+
+    if action == "bid":
+        game_activity[game_id].append({
+            "player": bot.name,
+            "action": "bid",
+            "description": str(result),
+            "probability": bot.last_bid_probability,
+        })
+    elif action == "challenge":
+        game_activity[game_id].append({
+            "player": bot.name,
+            "action": "challenge",
+            "description": "Called Bullshit!",
+            "claim_is_true": result.claim_is_true,
+            "loser_id": result.loser_id,
+        })
 
     return serialize_game(game_id, game)
 
@@ -411,7 +432,6 @@ def start_next_round(game_id: str):
     try:
         game.start_next_round()
 
-        process_bot_turns(game_id, game)
 
     except ValueError as error:
         raise HTTPException(

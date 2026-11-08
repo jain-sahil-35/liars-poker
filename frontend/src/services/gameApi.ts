@@ -139,6 +139,12 @@ export function placeBid(
   })
 }
 
+export function advanceBot(gameId: string): Promise<GameState> {
+  return request<GameState>(`/games/${gameId}/advance-bot`, {
+    method: 'POST',
+  })
+}
+
 export function callBullshit(
   gameId: string,
 ): Promise<ChallengeResponse> {
