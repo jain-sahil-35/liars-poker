@@ -1,3 +1,4 @@
+
 from collections import Counter
 from itertools import combinations
 from enum import IntEnum
@@ -48,23 +49,17 @@ def evaluate_five(cards):
         and len(set(suits)) == 1
     )
 
-    # Check for a straight.
+    # Check for a normal five-card straight.
+    # Ace-low (A, 2, 3, 4, 5) is not permitted.
     unique_ranks = sorted(set(ranks), reverse=True)
 
     is_straight = False
     straight_high = 0
 
     if len(cards) == 5 and len(unique_ranks) == 5:
-
-        # Normal straight.
         if unique_ranks[0] - unique_ranks[-1] == 4:
             is_straight = True
             straight_high = unique_ranks[0]
-
-        # Special case: A, 2, 3, 4, 5.
-        elif unique_ranks == [14, 5, 4, 3, 2]:
-            is_straight = True
-            straight_high = 5
 
     # Royal Flush
     if is_flush and is_straight and straight_high == 14:

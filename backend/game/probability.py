@@ -1,10 +1,11 @@
+
 from math import comb
 import random
+from collections import Counter
 
 from game.cards import Card, Rank, Suit
 from game.bidding import Bid
 from game.hand_evaluator import HandRank
-from collections import Counter
 
 
 def probability_of_at_least(
@@ -31,7 +32,6 @@ def probability_of_at_least(
         return 0.0
 
     total_ways = comb(unknown_total, unknown_cards)
-
     probability = 0.0
 
     for successes in range(
@@ -110,10 +110,11 @@ def _claim_exists_fast(cards, bid):
     rank_counts = Counter(card.rank.value for card in cards)
 
     def has_straight(high_rank, suit=None):
-        if high_rank == 5:
-            required = {14, 2, 3, 4, 5}
-        else:
-            required = set(range(high_rank - 4, high_rank + 1))
+        # Ace-low straights are not permitted.
+        if high_rank < 6 or high_rank > 14:
+            return False
+
+        required = set(range(high_rank - 4, high_rank + 1))
 
         available = {
             card.rank.value
@@ -148,11 +149,7 @@ def _claim_exists_fast(cards, bid):
         if not has_straight(high):
             return False
 
-        required = (
-            {14, 2, 3, 4, 5}
-            if high == 5
-            else set(range(high - 4, high + 1))
-        )
+        required = set(range(high - 4, high + 1))
 
         suit_options = [
             {
@@ -163,9 +160,8 @@ def _claim_exists_fast(cards, bid):
             for rank in required
         ]
 
-        # If all available cards for these ranks have only
-        # one common suit, the only possible straight is a
-        # Straight Flush.
+        # A Straight must have a selection that is not
+        # entirely one suit (otherwise it is a Straight Flush).
         return len(set.union(*suit_options)) > 1
 
     if category == HandRank.FULL_HOUSE:
@@ -173,41 +169,33 @@ def _claim_exists_fast(cards, bid):
         return rank_counts[trip] >= 3 and rank_counts[pair] >= 2
 
     if category == HandRank.FLUSH:
-        # A Flush must contain five distinct ranks.
-        if len(set(values)) != 5:
-            return False
+        suit, high_card = values
 
-        # A consecutive sequence is classified as a Straight Flush,
-        # not an ordinary Flush.
-        sorted_ranks = sorted(values)
+        qualifying_cards = [
+            card
+            for card in cards
+            if card.suit == suit and card.rank <= high_card
+        ]
 
-        is_straight = (
-            sorted_ranks == [2, 3, 4, 5, 14]
-            or sorted_ranks[-1] - sorted_ranks[0] == 4
+        has_declared_high_card = any(
+            card.rank == high_card
+            for card in qualifying_cards
         )
 
-        if is_straight:
-            return False
-
-        for suit in Suit:
-            suit_counts = Counter(
-                card.rank.value
-                for card in cards
-                if card.suit == suit
-            )
-
-            if all(suit_counts[rank] >= 1 for rank in values):
-                return True
-
-        return False
+        return (
+            len(qualifying_cards) >= 5
+            and has_declared_high_card
+        )
 
     if category == HandRank.STRAIGHT_FLUSH:
+        high = values[0]
+
         # Ace-high Straight Flush is classified as Royal Flush.
-        if values[0] == 14:
+        if high < 6 or high >= 14:
             return False
 
         return any(
-            has_straight(values[0], suit)
+            has_straight(high, suit)
             for suit in Suit
         )
 
@@ -227,6 +215,7 @@ def _claim_exists_fast(cards, bid):
         return False
 
     return False
+
 
 def probability_of_claim(
     player_cards: list[Card],
@@ -263,10 +252,7 @@ def probability_of_claim(
     if simulations <= 0:
         raise ValueError("Simulations must be positive.")
 
-    if len(player_cards) > total_cards:
-        raise ValueError("Invalid number of cards.")
-
-    if total_cards < {
+    required_cards = {
         HandRank.HIGH_CARD: 1,
         HandRank.ONE_PAIR: 2,
         HandRank.TWO_PAIR: 4,
@@ -276,8 +262,10 @@ def probability_of_claim(
         HandRank.FULL_HOUSE: 5,
         HandRank.FOUR_OF_A_KIND: 4,
         HandRank.STRAIGHT_FLUSH: 5,
-        HandRank.ROYAL_FLUSH: 5
-    }[bid.category]:
+        HandRank.ROYAL_FLUSH: 5,
+    }[bid.category]
+
+    if total_cards < required_cards:
         return 0.0
 
     # These categories can be calculated exactly.
@@ -285,7 +273,7 @@ def probability_of_claim(
         HandRank.HIGH_CARD: 1,
         HandRank.ONE_PAIR: 2,
         HandRank.THREE_OF_A_KIND: 3,
-        HandRank.FOUR_OF_A_KIND: 4
+        HandRank.FOUR_OF_A_KIND: 4,
     }
 
     if bid.category in rank_claims:
@@ -318,7 +306,6 @@ def probability_of_claim(
     successful_simulations = 0
 
     for _ in range(simulations):
-
         sampled_cards = rng.sample(
             unknown_deck,
             unknown_count

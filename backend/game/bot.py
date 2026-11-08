@@ -3,6 +3,7 @@ from enum import Enum
 import random
 from itertools import combinations
 
+from game.cards import Rank, Suit
 from game.bidding import Bid
 from game.hand_evaluator import HandRank
 from game.probability import probability_of_claim
@@ -39,30 +40,45 @@ class Bot:
         candidates = []
         ranks = range(2, 15)
 
+        # High Card
         for rank in ranks:
-            candidates.append(Bid(HandRank.HIGH_CARD, (rank,)))
+            candidates.append(
+                Bid(HandRank.HIGH_CARD, (rank,))
+            )
 
+        # One Pair
         for rank in ranks:
-            candidates.append(Bid(HandRank.ONE_PAIR, (rank,)))
+            candidates.append(
+                Bid(HandRank.ONE_PAIR, (rank,))
+            )
 
+        # Two Pair
         for high, low in combinations(ranks, 2):
             candidates.append(
                 Bid(HandRank.TWO_PAIR, (low, high))
             )
 
+        # Three of a Kind
         for rank in ranks:
             candidates.append(
                 Bid(HandRank.THREE_OF_A_KIND, (rank,))
             )
 
-        for high in range(5, 15):
-            candidates.append(Bid(HandRank.STRAIGHT, (high,)))
-
-        for values in combinations(ranks, 5):
+        # Straight: 6-high through Ace-high.
+        # Ace-low Straight is not permitted.
+        for high in range(6, 15):
             candidates.append(
-                Bid(HandRank.FLUSH, tuple(reversed(values)))
+                Bid(HandRank.STRAIGHT, (high,))
             )
 
+        # Flush: every suit and every possible high card.
+        for suit in Suit:
+            for rank in Rank:
+                candidates.append(
+                    Bid(HandRank.FLUSH, (suit, rank))
+                )
+
+        # Full House
         for trip in ranks:
             for pair in ranks:
                 if trip != pair:
@@ -70,17 +86,23 @@ class Bot:
                         Bid(HandRank.FULL_HOUSE, (trip, pair))
                     )
 
+        # Four of a Kind
         for rank in ranks:
             candidates.append(
                 Bid(HandRank.FOUR_OF_A_KIND, (rank,))
             )
 
-        for high in range(5, 15):
+        # Straight Flush: 6-high through King-high.
+        # Ace-high is represented by Royal Flush.
+        for high in range(6, 14):
             candidates.append(
                 Bid(HandRank.STRAIGHT_FLUSH, (high,))
             )
 
-        candidates.append(Bid(HandRank.ROYAL_FLUSH, ()))
+        # Royal Flush
+        candidates.append(
+            Bid(HandRank.ROYAL_FLUSH, ())
+        )
 
         return candidates
 
@@ -127,7 +149,7 @@ class Bot:
         thresholds = {
             BotPersonality.CONSERVATIVE: 0.15,
             BotPersonality.AGGRESSIVE: 0.40,
-            BotPersonality.DETECTIVE: 0.25
+            BotPersonality.DETECTIVE: 0.25,
         }
 
         threshold = thresholds[self.personality]

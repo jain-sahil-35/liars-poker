@@ -69,16 +69,18 @@ def test_straight_claim():
     assert claim_exists(cards, bid) is True
 
 
+
 def test_flush_claim():
     cards = [
-        make_card(14, Suit.HEARTS),
-        make_card(12, Suit.HEARTS),
-        make_card(10, Suit.HEARTS),
-        make_card(8, Suit.HEARTS),
-        make_card(5, Suit.HEARTS)
+        make_card(13, Suit.HEARTS),  # K
+        make_card(12, Suit.HEARTS),  # Q
+        make_card(11, Suit.HEARTS),  # J
+        make_card(9, Suit.HEARTS),   # 9
+        make_card(7, Suit.HEARTS),   # 7
+        make_card(4, Suit.HEARTS),   # 4
     ]
 
-    bid = Bid(HandRank.FLUSH, (14, 12, 10, 8, 5))
+    bid = Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN))
 
     assert claim_exists(cards, bid) is True
 
@@ -153,5 +155,77 @@ def test_claim_fails_when_not_enough_cards():
     cards = [make_card(14, Suit.HEARTS)]
 
     bid = Bid(HandRank.ONE_PAIR, (14,))
+
+    assert claim_exists(cards, bid) is False
+
+
+def test_flush_ignores_cards_above_declared_high_card():
+    cards = [
+        make_card(13, Suit.HEARTS),  # K - ignored
+        make_card(12, Suit.HEARTS),  # Q
+        make_card(11, Suit.HEARTS),  # J
+        make_card(9, Suit.HEARTS),
+        make_card(7, Suit.HEARTS),
+        make_card(4, Suit.HEARTS),
+    ]
+
+    bid = Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN))
+
+    assert claim_exists(cards, bid) is True
+
+
+def test_flush_requires_declared_high_card():
+    cards = [
+        make_card(11, Suit.HEARTS),
+        make_card(10, Suit.HEARTS),
+        make_card(9, Suit.HEARTS),
+        make_card(7, Suit.HEARTS),
+        make_card(4, Suit.HEARTS),
+    ]
+
+    bid = Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN))
+
+    assert claim_exists(cards, bid) is False
+
+
+def test_flush_requires_five_qualifying_cards():
+    cards = [
+        make_card(12, Suit.HEARTS),
+        make_card(11, Suit.HEARTS),
+        make_card(9, Suit.HEARTS),
+        make_card(7, Suit.HEARTS),
+        make_card(13, Suit.HEARTS),  # Above Q, ignored
+    ]
+
+    bid = Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN))
+
+    assert claim_exists(cards, bid) is False
+
+
+def test_flush_does_not_count_other_suits():
+    cards = [
+        make_card(12, Suit.HEARTS),
+        make_card(11, Suit.HEARTS),
+        make_card(9, Suit.HEARTS),
+        make_card(7, Suit.HEARTS),
+        make_card(4, Suit.SPADES),
+        make_card(3, Suit.CLUBS),
+    ]
+
+    bid = Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN))
+
+    assert claim_exists(cards, bid) is False
+
+
+def test_ace_low_straight_claim_is_false():
+    cards = [
+        make_card(14, Suit.HEARTS),
+        make_card(2, Suit.CLUBS),
+        make_card(3, Suit.SPADES),
+        make_card(4, Suit.DIAMONDS),
+        make_card(5, Suit.HEARTS),
+    ]
+
+    bid = Bid(HandRank.STRAIGHT, (6,))
 
     assert claim_exists(cards, bid) is False

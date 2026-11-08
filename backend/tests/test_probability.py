@@ -188,7 +188,7 @@ def test_probability_of_flush_is_reproducible():
         Card(Rank.TWO, Suit.CLUBS)
     ]
 
-    bid = Bid(HandRank.FLUSH, (14, 12, 10, 8, 5))
+    bid = Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.ACE))
 
     first = probability_of_claim(
         cards, 8, bid, simulations=1000,
@@ -204,7 +204,7 @@ def test_probability_of_flush_is_reproducible():
 
 
 def test_probability_rejects_invalid_simulation_count():
-    bid = Bid(HandRank.FLUSH, (14, 12, 10, 8, 5))
+    bid = Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.ACE))
 
     with pytest.raises(ValueError):
         probability_of_claim([], 8, bid, simulations=0)
@@ -281,7 +281,7 @@ def test_fast_claim_checker_matches_original_verifier():
         Bid(HandRank.TWO_PAIR, (14, 13)),
         Bid(HandRank.THREE_OF_A_KIND, (14,)),
         Bid(HandRank.STRAIGHT, (14,)),
-        Bid(HandRank.FLUSH, (14, 13, 12, 11, 10)),
+        Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN)),
         Bid(HandRank.FULL_HOUSE, (14, 13)),
         Bid(HandRank.FOUR_OF_A_KIND, (14,)),
         Bid(HandRank.STRAIGHT_FLUSH, (14,)),
@@ -307,7 +307,7 @@ def test_fast_checker_matches_original_on_random_card_sets():
         Bid(HandRank.TWO_PAIR, (14, 10)),
         Bid(HandRank.THREE_OF_A_KIND, (12,)),
         Bid(HandRank.STRAIGHT, (10,)),
-        Bid(HandRank.FLUSH, (14, 12, 10, 8, 5)),
+        Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN)),
         Bid(HandRank.FULL_HOUSE, (7, 14)),
         Bid(HandRank.FOUR_OF_A_KIND, (11,)),
         Bid(HandRank.STRAIGHT_FLUSH, (9,)),
@@ -324,3 +324,34 @@ def test_fast_checker_matches_original_on_random_card_sets():
             assert fast_result == original_result, (
                 f"Mismatch for {bid} with cards {cards}"
             )
+
+
+def test_fast_checker_uses_new_flush_rules():
+    cards = [
+        Card(Rank.KING, Suit.HEARTS),
+        Card(Rank.QUEEN, Suit.HEARTS),
+        Card(Rank.JACK, Suit.HEARTS),
+        Card(Rank.NINE, Suit.HEARTS),
+        Card(Rank.SEVEN, Suit.HEARTS),
+        Card(Rank.FOUR, Suit.HEARTS),
+    ]
+
+    bid = Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN))
+
+    assert _claim_exists_fast(cards, bid) is True
+    assert _claim_exists_fast(cards, bid) == claim_exists(cards, bid)
+
+
+def test_fast_checker_rejects_ace_low_straight():
+    cards = [
+        Card(Rank.ACE, Suit.HEARTS),
+        Card(Rank.TWO, Suit.CLUBS),
+        Card(Rank.THREE, Suit.SPADES),
+        Card(Rank.FOUR, Suit.DIAMONDS),
+        Card(Rank.FIVE, Suit.HEARTS),
+    ]
+
+    bid = Bid(HandRank.STRAIGHT, (6,))
+
+    assert _claim_exists_fast(cards, bid) is False
+    assert _claim_exists_fast(cards, bid) == claim_exists(cards, bid)

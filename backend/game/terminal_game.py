@@ -5,6 +5,7 @@ from game.bot import Bot, BotPersonality
 from game.bidding import Bid
 from game.hand_evaluator import HandRank
 from game.terminal_ui import format_table
+from game.cards import Rank, Suit
 
 
 RANKS = {
@@ -80,6 +81,7 @@ def create_players(input_fn=input):
     return players, bots
 
 
+
 def display_bid(bid):
     """Return a readable description of a bid."""
 
@@ -95,13 +97,17 @@ def display_bid(bid):
 
     category = bid.category.name.replace("_", " ").title()
 
+    if bid.category == HandRank.FLUSH:
+        suit, high_card = bid.values
+        rank_name = rank_names.get(high_card.value, str(high_card.value))
+        return f"Flush - {suit.value} - {rank_name}"
+
     values = ", ".join(
         rank_names.get(value, str(value))
         for value in bid.values
     )
 
     return f"{category} - {values}"
-
 
 
 def get_human_bid(current_bid, input_fn=input):
@@ -126,7 +132,7 @@ def get_human_bid(current_bid, input_fn=input):
         HandRank.TWO_PAIR: 2,
         HandRank.THREE_OF_A_KIND: 1,
         HandRank.STRAIGHT: 1,
-        HandRank.FLUSH: 5,
+        HandRank.FLUSH: 2,
         HandRank.FULL_HOUSE: 2,
         HandRank.FOUR_OF_A_KIND: 1,
         HandRank.STRAIGHT_FLUSH: 1,
@@ -142,6 +148,28 @@ def get_human_bid(current_bid, input_fn=input):
 
             print("Invalid rank. Choose from 2-10, J, Q, K, A.")
 
+    def read_suit():
+        suits = {
+            "1": Suit.HEARTS,
+            "2": Suit.DIAMONDS,
+            "3": Suit.CLUBS,
+            "4": Suit.SPADES
+        }
+
+        print("\nChoose Flush suit:")
+        print("1. Hearts")
+        print("2. Diamonds")
+        print("3. Clubs")
+        print("4. Spades")
+
+        choice = choose_option(
+            "Your choice: ",
+            ["1", "2", "3", "4"],
+            input_fn
+        )
+
+        return suits[choice]
+
     while True:
 
         print("\nAvailable claims:")
@@ -156,42 +184,50 @@ def get_human_bid(current_bid, input_fn=input):
         )
 
         category = BID_CATEGORIES[category_choice]
-        count = value_counts[category]
 
-        values = []
+        if category == HandRank.FLUSH:
+            suit = read_suit()
+            high_card = Rank(read_rank(
+                "Enter the Flush high card (2-10, J, Q, K, A): "
+            ))
 
-        if category == HandRank.TWO_PAIR:
-            print("Enter the higher pair rank first.")
+            values = (suit, high_card)
 
-        elif category == HandRank.FULL_HOUSE:
-            print("Enter the three-of-a-kind rank first, then the pair rank.")
-
-        elif category == HandRank.FLUSH:
-            print("Enter all five ranks in descending order.")
-
-        for i in range(count):
+        else:
+            count = value_counts[category]
+            values = []
 
             if category == HandRank.TWO_PAIR:
-                prompt = f"Pair {i + 1} rank: "
+                print("Enter the higher pair rank first.")
 
             elif category == HandRank.FULL_HOUSE:
-                prompt = (
-                    "Three-of-a-kind rank: "
-                    if i == 0 else "Pair rank: "
+                print(
+                    "Enter the three-of-a-kind rank first, "
+                    "then the pair rank."
                 )
 
-            elif category == HandRank.FLUSH:
-                prompt = f"Flush card {i + 1} rank: "
+            for i in range(count):
 
-            else:
-                prompt = "Choose rank (2-10, J, Q, K, A): "
+                if category == HandRank.TWO_PAIR:
+                    prompt = f"Pair {i + 1} rank: "
 
-            values.append(read_rank(prompt))
+                elif category == HandRank.FULL_HOUSE:
+                    prompt = (
+                        "Three-of-a-kind rank: "
+                        if i == 0 else "Pair rank: "
+                    )
+
+                else:
+                    prompt = "Choose rank (2-10, J, Q, K, A): "
+
+                values.append(read_rank(prompt))
+
+            values = tuple(values)
 
         try:
-            bid = Bid(category, tuple(values))
+            bid = Bid(category, values)
 
-        except ValueError as error:
+        except (ValueError, TypeError) as error:
             print(f"Invalid bid: {error}")
             continue
 

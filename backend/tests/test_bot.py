@@ -211,11 +211,31 @@ def test_all_generated_bids_are_structurally_valid():
 
     candidates = bot.generate_candidates()
 
-    assert len(candidates) > 1000
+    assert len(candidates) == 356
 
     for bid in candidates:
         assert isinstance(bid, Bid)
         assert bid.category in HandRank
+
+
+def test_bot_generates_flush_bids_for_all_suits_and_ranks():
+    bot = create_bot(BotPersonality.CONSERVATIVE)
+
+    flush_bids = [
+        bid for bid in bot.generate_candidates()
+        if bid.category == HandRank.FLUSH
+    ]
+
+    assert len(flush_bids) == 52
+
+    assert {
+        bid.values[0] for bid in flush_bids
+    } == set(Suit)
+
+    assert {
+        bid.values[1] for bid in flush_bids
+    } == set(Rank)
+
 
 
 def test_bot_can_raise_to_two_pair():
@@ -274,7 +294,7 @@ def test_bot_can_challenge_complex_claims(monkeypatch):
         Bid(HandRank.TWO_PAIR, (14, 10)),
         Bid(HandRank.THREE_OF_A_KIND, (14,)),
         Bid(HandRank.STRAIGHT, (10,)),
-        Bid(HandRank.FLUSH, (14, 12, 10, 8, 5)),
+        Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN)),
         Bid(HandRank.FULL_HOUSE, (14, 10)),
         Bid(HandRank.FOUR_OF_A_KIND, (14,)),
         Bid(HandRank.STRAIGHT_FLUSH, (9,)),
@@ -293,7 +313,7 @@ def test_conservative_bot_requires_lower_probability(monkeypatch):
         lambda *args: 0.20
     )
 
-    bid = Bid(HandRank.FLUSH, (14, 12, 10, 8, 5))
+    bid = Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN))
 
     assert bot.should_challenge(bid, 12) is False
 
@@ -306,7 +326,7 @@ def test_aggressive_bot_challenges_at_higher_probability(monkeypatch):
         lambda *args: 0.30
     )
 
-    bid = Bid(HandRank.FLUSH, (14, 12, 10, 8, 5))
+    bid = Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN))
 
     assert bot.should_challenge(bid, 12) is True
 

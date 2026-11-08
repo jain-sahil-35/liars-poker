@@ -168,3 +168,27 @@ def test_four_card_two_pair():
     ]
 
     assert evaluate_hand(cards)[0] == HandRank.TWO_PAIR
+
+
+def test_ace_low_sequence_is_not_a_straight():
+    cards = [
+        make_card(14, Suit.HEARTS),
+        make_card(2, Suit.CLUBS),
+        make_card(3, Suit.SPADES),
+        make_card(4, Suit.DIAMONDS),
+        make_card(5, Suit.HEARTS)
+    ]
+
+    assert evaluate_hand(cards)[0] == HandRank.HIGH_CARD
+
+
+def test_ace_low_sequence_is_not_a_straight_flush():
+    cards = [
+        make_card(14, Suit.HEARTS),
+        make_card(2, Suit.HEARTS),
+        make_card(3, Suit.HEARTS),
+        make_card(4, Suit.HEARTS),
+        make_card(5, Suit.HEARTS)
+    ]
+
+    assert evaluate_hand(cards)[0] == HandRank.FLUSH

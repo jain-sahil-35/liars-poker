@@ -1,5 +1,6 @@
 from game.terminal_game import get_human_bid
 from game.hand_evaluator import HandRank
+from game.cards import Suit, Rank
 
 def test_human_can_make_high_card_bid():
 
@@ -27,7 +28,7 @@ def test_human_can_make_two_pair_bid():
 
 
 def test_human_can_make_flush_bid():
-    inputs = iter(["6", "A", "Q", "10", "8", "5"])
+    inputs = iter(["6", "1", "Q"])
 
     bid = get_human_bid(
         current_bid=None,
@@ -35,7 +36,7 @@ def test_human_can_make_flush_bid():
     )
 
     assert bid.category == HandRank.FLUSH
-    assert bid.values == (14, 12, 10, 8, 5)
+    assert bid.values == (Suit.HEARTS, Rank.QUEEN)
 
 
 def test_human_can_make_full_house_bid():
