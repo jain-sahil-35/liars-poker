@@ -102,6 +102,14 @@ def display_bid(bid):
         rank_name = rank_names.get(high_card.value, str(high_card.value))
         return f"Flush - {suit.value} - {rank_name}"
 
+    if bid.category == HandRank.STRAIGHT_FLUSH:
+        suit, high_rank = bid.values
+        rank_name = rank_names.get(high_rank, str(high_rank))
+        return f"Straight Flush - {suit.value} - {rank_name}-high"
+
+    if bid.category == HandRank.ROYAL_FLUSH:
+        return f"Royal Flush - {bid.values[0].value}"
+
     values = ", ".join(
         rank_names.get(value, str(value))
         for value in bid.values
@@ -135,8 +143,8 @@ def get_human_bid(current_bid, input_fn=input):
         HandRank.FLUSH: 2,
         HandRank.FULL_HOUSE: 2,
         HandRank.FOUR_OF_A_KIND: 1,
-        HandRank.STRAIGHT_FLUSH: 1,
-        HandRank.ROYAL_FLUSH: 0
+        HandRank.STRAIGHT_FLUSH: 2,
+        HandRank.ROYAL_FLUSH: 1
     }
 
     def read_rank(prompt):
@@ -192,6 +200,13 @@ def get_human_bid(current_bid, input_fn=input):
             ))
 
             values = (suit, high_card)
+
+        elif category == HandRank.STRAIGHT_FLUSH:
+            suit = read_suit()
+            high_rank = read_rank(
+                "Enter the Straight Flush high card (6-10, J, Q, K): "
+            )
+            values = (suit, high_rank)
 
         elif category == HandRank.ROYAL_FLUSH:
             suit = read_suit()

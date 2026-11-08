@@ -14,7 +14,7 @@ BID_VALUE_COUNTS = {
     HandRank.FLUSH: 2,
     HandRank.FULL_HOUSE: 2,
     HandRank.FOUR_OF_A_KIND: 1,
-    HandRank.STRAIGHT_FLUSH: 1,
+    HandRank.STRAIGHT_FLUSH: 2,
     HandRank.ROYAL_FLUSH: 1,
 }
 
@@ -44,6 +44,28 @@ class Bid:
             if not isinstance(rank, Rank):
                 raise TypeError("Flush high card must be a Rank.")
 
+            return
+
+        # Straight Flush: (Suit, high_rank)
+        if self.category == HandRank.STRAIGHT_FLUSH:
+            suit, high_rank = self.values
+
+            if not isinstance(suit, Suit):
+                raise TypeError("Straight Flush suit must be a Suit.")
+
+            if (
+                not isinstance(high_rank, int)
+                or isinstance(high_rank, bool)
+                or high_rank < 6
+                or high_rank > 13
+            ):
+                raise ValueError(
+                    "Straight Flush high card must be between 6 and 13."
+                )
+
+            # Integer high-rank values are used consistently for straights.
+            # 5-high is disallowed; 6-high is the lowest valid straight flush.
+            # Ace-high is represented by the separate Royal Flush category.
             return
 
         # Royal Flush: (Suit,)
@@ -88,6 +110,10 @@ class Bid:
 
         if self.category == HandRank.FLUSH:
             return (int(self.category), int(self.values[1]))
+        
+        if self.category == HandRank.STRAIGHT_FLUSH:
+            # Suit identifies the claimed cards but does not affect bid strength.
+            return (int(self.category), self.values[1])
 
         # Royal Flush suits have equal bidding strength.
         if self.category == HandRank.ROYAL_FLUSH:
@@ -118,6 +144,17 @@ class Bid:
         if self.category == HandRank.FLUSH:
             suit, rank = self.values
             return f"Flush - {suit.value} - {rank.name}"
+
+        if self.category == HandRank.STRAIGHT_FLUSH:
+            suit, high_rank = self.values
+            rank_names = {
+                11: "Jack",
+                12: "Queen",
+                13: "King"
+            }
+            rank_name = rank_names.get(high_rank, str(high_rank))
+
+            return f"Straight Flush - {suit.value} - {rank_name}-high"
 
         if self.category == HandRank.ROYAL_FLUSH:
             suit = self.values[0]

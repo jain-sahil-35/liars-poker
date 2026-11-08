@@ -61,3 +61,14 @@ def test_human_can_make_royal_flush_bid():
 
     assert bid.category == HandRank.ROYAL_FLUSH
     assert bid.values == (Suit.HEARTS,)
+
+def test_human_can_make_straight_flush_bid():
+    inputs = iter(["9", "4", "9"])
+
+    bid = get_human_bid(
+        current_bid=None,
+        input_fn=lambda prompt: next(inputs)
+    )
+
+    assert bid.category == HandRank.STRAIGHT_FLUSH
+    assert bid.values == (Suit.SPADES, 9)

@@ -232,7 +232,7 @@ def test_all_generated_bids_are_structurally_valid():
 
     candidates = bot.generate_candidates()
 
-    assert len(candidates) == 359
+    assert len(candidates) == 383
 
     for bid in candidates:
         assert isinstance(bid, Bid)
@@ -329,7 +329,7 @@ def test_bot_can_challenge_complex_claims(monkeypatch):
         Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN)),
         Bid(HandRank.FULL_HOUSE, (14, 10)),
         Bid(HandRank.FOUR_OF_A_KIND, (14,)),
-        Bid(HandRank.STRAIGHT_FLUSH, (9,)),
+        Bid(HandRank.STRAIGHT_FLUSH, (Suit.SPADES, 9)),
         Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
     ]
 

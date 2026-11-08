@@ -260,7 +260,7 @@ def test_probability_of_guaranteed_straight_flush():
         Card(Rank.FIVE, Suit.HEARTS)
     ]
 
-    bid = Bid(HandRank.STRAIGHT_FLUSH, (9,))
+    bid = Bid(HandRank.STRAIGHT_FLUSH, (Suit.HEARTS, 9))
 
     assert probability_of_claim(cards, 5, bid) == 1.0
 
@@ -284,7 +284,7 @@ def test_fast_claim_checker_matches_original_verifier():
         Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN)),
         Bid(HandRank.FULL_HOUSE, (14, 13)),
         Bid(HandRank.FOUR_OF_A_KIND, (14,)),
-        Bid(HandRank.STRAIGHT_FLUSH, (14,)),
+        Bid(HandRank.STRAIGHT_FLUSH, (Suit.SPADES, 9)),
         Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
     ]
 
@@ -310,7 +310,7 @@ def test_fast_checker_matches_original_on_random_card_sets():
         Bid(HandRank.FLUSH, (Suit.HEARTS, Rank.QUEEN)),
         Bid(HandRank.FULL_HOUSE, (7, 14)),
         Bid(HandRank.FOUR_OF_A_KIND, (11,)),
-        Bid(HandRank.STRAIGHT_FLUSH, (9,)),
+        Bid(HandRank.STRAIGHT_FLUSH, (Suit.SPADES, 9)),
         Bid(HandRank.ROYAL_FLUSH, (Suit.HEARTS,))
     ]
 
@@ -412,3 +412,33 @@ def test_probability_rejects_royal_flush_in_wrong_suit():
     )
 
     assert probability_of_claim(cards, 5, hearts_bid) == 0.0
+
+
+def test_fast_checker_requires_declared_straight_flush_suit():
+    cards = [
+        Card(Rank.NINE, Suit.HEARTS),
+        Card(Rank.EIGHT, Suit.HEARTS),
+        Card(Rank.SEVEN, Suit.HEARTS),
+        Card(Rank.SIX, Suit.HEARTS),
+        Card(Rank.FIVE, Suit.HEARTS),
+    ]
+
+    hearts_bid = Bid(HandRank.STRAIGHT_FLUSH, (Suit.HEARTS, 9))
+    spades_bid = Bid(HandRank.STRAIGHT_FLUSH, (Suit.SPADES, 9))
+
+    assert _claim_exists_fast(cards, hearts_bid) is True
+    assert _claim_exists_fast(cards, spades_bid) is False
+
+
+def test_probability_rejects_straight_flush_in_wrong_suit():
+    cards = [
+        Card(Rank.NINE, Suit.HEARTS),
+        Card(Rank.EIGHT, Suit.HEARTS),
+        Card(Rank.SEVEN, Suit.HEARTS),
+        Card(Rank.SIX, Suit.HEARTS),
+        Card(Rank.FIVE, Suit.HEARTS),
+    ]
+
+    spades_bid = Bid(HandRank.STRAIGHT_FLUSH, (Suit.SPADES, 9))
+
+    assert probability_of_claim(cards, 5, spades_bid) == 0.0

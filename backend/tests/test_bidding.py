@@ -129,7 +129,7 @@ def test_five_high_straight_is_rejected():
 
 def test_five_high_straight_flush_is_rejected():
     with pytest.raises(ValueError):
-        Bid(HandRank.STRAIGHT_FLUSH, (5,))
+        Bid(HandRank.STRAIGHT_FLUSH, (Suit.SPADES, 5))
 
 
 def test_six_high_straight_is_valid():
@@ -138,8 +138,12 @@ def test_six_high_straight_is_valid():
 
 
 def test_six_high_straight_flush_is_valid():
-    bid = Bid(HandRank.STRAIGHT_FLUSH, (6,))
-    assert bid.values == (6,)
+    bid = Bid(
+        HandRank.STRAIGHT_FLUSH,
+        (Suit.HEARTS, 6)
+    )
+
+    assert bid.values == (Suit.HEARTS, 6)
 
 
 def test_royal_flush_requires_suit():
@@ -171,3 +175,17 @@ def test_cannot_raise_after_royal_flush():
         manager.place_bid(
             Bid(HandRank.ROYAL_FLUSH, (Suit.SPADES,))
         )
+
+
+def test_straight_flush_suits_have_equal_strength():
+    hearts = Bid(HandRank.STRAIGHT_FLUSH, (Suit.HEARTS, 9))
+    spades = Bid(HandRank.STRAIGHT_FLUSH, (Suit.SPADES, 9))
+
+    assert hearts.strength == spades.strength
+    assert not hearts < spades
+    assert not spades < hearts
+
+
+def test_ace_high_straight_flush_is_rejected():
+    with pytest.raises(ValueError):
+        Bid(HandRank.STRAIGHT_FLUSH, (Suit.HEARTS, 14))

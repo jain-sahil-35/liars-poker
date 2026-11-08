@@ -188,16 +188,13 @@ def _claim_exists_fast(cards, bid):
         )
 
     if category == HandRank.STRAIGHT_FLUSH:
-        high = values[0]
+        claimed_suit, high = values
 
-        # Ace-high Straight Flush is classified as Royal Flush.
+        # Ace-high is represented by Royal Flush, not Straight Flush.
         if high < 6 or high >= 14:
             return False
 
-        return any(
-            has_straight(high, suit)
-            for suit in Suit
-        )
+        return has_straight(high, claimed_suit)
 
     if category == HandRank.ROYAL_FLUSH:
         required = {10, 11, 12, 13, 14}

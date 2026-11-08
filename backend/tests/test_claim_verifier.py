@@ -121,7 +121,7 @@ def test_straight_flush_claim():
         make_card(5, Suit.HEARTS)
     ]
 
-    bid = Bid(HandRank.STRAIGHT_FLUSH, (9,))
+    bid = Bid(HandRank.STRAIGHT_FLUSH, (Suit.HEARTS, 9))
 
     assert claim_exists(cards, bid) is True
 
@@ -229,3 +229,19 @@ def test_ace_low_straight_claim_is_false():
     bid = Bid(HandRank.STRAIGHT, (6,))
 
     assert claim_exists(cards, bid) is False
+
+
+def test_straight_flush_must_match_declared_suit():
+    cards = [
+        make_card(9, Suit.HEARTS),
+        make_card(8, Suit.HEARTS),
+        make_card(7, Suit.HEARTS),
+        make_card(6, Suit.HEARTS),
+        make_card(5, Suit.HEARTS),
+    ]
+
+    hearts_bid = Bid(HandRank.STRAIGHT_FLUSH, (Suit.HEARTS, 9))
+    spades_bid = Bid(HandRank.STRAIGHT_FLUSH, (Suit.SPADES, 9))
+
+    assert claim_exists(cards, hearts_bid) is True
+    assert claim_exists(cards, spades_bid) is False

@@ -91,9 +91,12 @@ class Bot:
         for rank in ranks:
             candidates.append(Bid(HandRank.FOUR_OF_A_KIND, (rank,)))
 
-        # Straight Flush: 6-high through King-high.
-        for high in range(6, 14):
-            candidates.append(Bid(HandRank.STRAIGHT_FLUSH, (high,)))
+        # Straight Flush: each suit, 6-high through King-high.
+        for suit in Suit:
+            for high in range(6, 14):
+                candidates.append(
+                    Bid(HandRank.STRAIGHT_FLUSH, (suit, high))
+                )
 
         # Royal Flush: generate one candidate for each suit.
         for suit in Suit:
@@ -168,21 +171,14 @@ class Bot:
             return matches / 5
 
         if category == HandRank.STRAIGHT_FLUSH:
-            high = values[0]
+            suit, high = values
             required = set(range(high - 4, high + 1))
-
-            best_matches = 0
-
-            for suit in Suit:
-                matches = {
-                    card.rank.value
-                    for card in cards
-                    if card.suit == suit
-                    and card.rank.value in required
-                }
-                best_matches = max(best_matches, len(matches))
-
-            return best_matches / 5
+            matches = {
+                card.rank.value
+                for card in cards
+                if card.suit == suit and card.rank.value in required
+            }
+            return len(matches) / 5
 
         if category == HandRank.ROYAL_FLUSH:
             required = {10, 11, 12, 13, 14}

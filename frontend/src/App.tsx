@@ -12,6 +12,8 @@ import {
   Sparkles,
 } from 'lucide-react'
 
+import BidBuilder, { type BidPayload } from './BidBuilder'
+
 import PlayingCard from './components/PlayingCard'
 import PlayerSeat from './components/PlayerSeat'
 
@@ -25,12 +27,48 @@ const initialPlayers = [
 function App() {
   const [currentBid, setCurrentBid] = useState('Pair of Kings')
   const [activity, setActivity] = useState('Waiting for your move...')
-  const [raiseCount, setRaiseCount] = useState(0)
 
-  const handleRaise = () => {
-    setRaiseCount((count) => count + 1)
-    setCurrentBid(`Pair of Kings + ${raiseCount + 1}`)
-    setActivity('You raised the current bid.')
+  const handleRaise = (bid: BidPayload) => {
+    const rankNames: Record<number, string> = {
+      2: '2',
+      3: '3',
+      4: '4',
+      5: '5',
+      6: '6',
+      7: '7',
+      8: '8',
+      9: '9',
+      10: '10',
+      11: 'Jack',
+      12: 'Queen',
+      13: 'King',
+      14: 'Ace',
+    }
+
+    const categoryNames: Record<BidPayload['category'], string> = {
+      HIGH_CARD: 'High Card',
+      ONE_PAIR: 'One Pair',
+      TWO_PAIR: 'Two Pair',
+      THREE_OF_A_KIND: 'Three of a Kind',
+      STRAIGHT: 'Straight',
+      FLUSH: 'Flush',
+      FULL_HOUSE: 'Full House',
+      FOUR_OF_A_KIND: 'Four of a Kind',
+      STRAIGHT_FLUSH: 'Straight Flush',
+      ROYAL_FLUSH: 'Royal Flush',
+    }
+
+    const formattedValues = bid.values.map((value) =>
+      typeof value === 'number' ? rankNames[value] : value
+    )
+
+    const bidDescription = [
+      categoryNames[bid.category],
+      ...formattedValues,
+    ].join(' - ')
+
+    setCurrentBid(bidDescription)
+    setActivity('You raised the bid.')
   }
 
   const handleChallenge = () => {
@@ -155,19 +193,13 @@ function App() {
             </div>
           </div>
 
-          {/* Actions */}
-          <div className="mt-7 grid grid-cols-2 gap-4 max-w-xl mx-auto">
-            <button
-              onClick={handleRaise}
-              className="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-[#0c1b13] font-bold py-4 rounded-xl transition-colors"
-            >
-              <ArrowUp size={18} />
-              Raise Bid
-            </button>
+          {/* Bid Builder and Game Actions */}
+          <div className="mt-7 max-w-xl mx-auto space-y-4">
+            <BidBuilder onSubmit={handleRaise} />
 
             <button
               onClick={handleChallenge}
-              className="flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-300 font-bold py-4 rounded-xl transition-colors"
+              className="w-full flex items-center justify-center gap-2 bg-red-500/10 border border-red-500/30 hover:bg-red-500/20 text-red-300 font-bold py-4 rounded-xl transition-colors"
             >
               <ShieldAlert size={18} />
               Bullshit!

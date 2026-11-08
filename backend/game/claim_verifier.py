@@ -61,21 +61,23 @@ def claim_exists(cards, bid):
         if result[0] != bid.category:
             continue
 
-        # Royal Flush must match the specifically claimed suit.
-        if bid.category == HandRank.ROYAL_FLUSH:
-            claimed_suit = bid.values[0]
-
+        # Suit-specific categories must match the declared suit.
+        if bid.category == HandRank.STRAIGHT_FLUSH:
+            claimed_suit, high_rank = bid.values
             if not all(card.suit == claimed_suit for card in combo):
                 continue
+            if result[1] == high_rank:
+                return True
+            continue
 
-            return True
+        if bid.category == HandRank.ROYAL_FLUSH:
+            claimed_suit = bid.values[0]
+            if all(card.suit == claimed_suit for card in combo):
+                return True
+            continue
 
         value_count = BID_VALUE_COUNTS[bid.category]
-
-        actual_values = tuple(
-            result[1:1 + value_count]
-        )
-
+        actual_values = tuple(result[1:1 + value_count])
         if actual_values == bid.values:
             return True
 
