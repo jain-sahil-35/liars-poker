@@ -3,6 +3,12 @@ from math import comb
 from game.cards import Card, Rank, Suit
 from game.probability import probability_of_rank_claim
 import pytest
+from game.probability import probability_of_claim
+import random
+from game.bidding import Bid
+from game.hand_evaluator import HandRank
+from game.probability import _claim_exists_fast
+from game.claim_verifier import claim_exists
 
 
 def test_probability_when_no_successes_are_required():
@@ -138,3 +144,183 @@ def test_rejects_zero_required_count():
 def test_rejects_non_card_objects():
     with pytest.raises(TypeError):
         probability_of_rank_claim(["King"], 10, Rank.KING, 2)
+
+
+def test_probability_of_guaranteed_pair():
+    cards = [
+        Card(Rank.KING, Suit.HEARTS),
+        Card(Rank.KING, Suit.SPADES)
+    ]
+
+    bid = Bid(HandRank.ONE_PAIR, (13,))
+
+    assert probability_of_claim(cards, 6, bid) == 1.0
+
+
+def test_probability_of_impossible_claim():
+    cards = [
+        Card(Rank.TWO, Suit.HEARTS),
+        Card(Rank.THREE, Suit.SPADES)
+    ]
+
+    bid = Bid(HandRank.ROYAL_FLUSH, ())
+
+    assert probability_of_claim(cards, 4, bid) == 0.0
+
+
+def test_probability_of_guaranteed_royal_flush():
+    cards = [
+        Card(Rank.ACE, Suit.SPADES),
+        Card(Rank.KING, Suit.SPADES),
+        Card(Rank.QUEEN, Suit.SPADES),
+        Card(Rank.JACK, Suit.SPADES),
+        Card(Rank.TEN, Suit.SPADES)
+    ]
+
+    bid = Bid(HandRank.ROYAL_FLUSH, ())
+
+    assert probability_of_claim(cards, 5, bid) == 1.0
+
+
+def test_probability_of_flush_is_reproducible():
+    cards = [
+        Card(Rank.ACE, Suit.HEARTS),
+        Card(Rank.TWO, Suit.CLUBS)
+    ]
+
+    bid = Bid(HandRank.FLUSH, (14, 12, 10, 8, 5))
+
+    first = probability_of_claim(
+        cards, 8, bid, simulations=1000,
+        rng=random.Random(42)
+    )
+
+    second = probability_of_claim(
+        cards, 8, bid, simulations=1000,
+        rng=random.Random(42)
+    )
+
+    assert first == second
+
+
+def test_probability_rejects_invalid_simulation_count():
+    bid = Bid(HandRank.FLUSH, (14, 12, 10, 8, 5))
+
+    with pytest.raises(ValueError):
+        probability_of_claim([], 8, bid, simulations=0)
+
+
+def test_probability_of_guaranteed_two_pair():
+    cards = [
+        Card(Rank.ACE, Suit.HEARTS),
+        Card(Rank.ACE, Suit.SPADES),
+        Card(Rank.KING, Suit.HEARTS),
+        Card(Rank.KING, Suit.CLUBS)
+    ]
+
+    bid = Bid(HandRank.TWO_PAIR, (14, 13))
+
+    assert probability_of_claim(cards, 4, bid) == 1.0
+
+
+def test_probability_of_guaranteed_straight():
+    cards = [
+        Card(Rank.SIX, Suit.HEARTS),
+        Card(Rank.SEVEN, Suit.CLUBS),
+        Card(Rank.EIGHT, Suit.SPADES),
+        Card(Rank.NINE, Suit.DIAMONDS),
+        Card(Rank.TEN, Suit.HEARTS)
+    ]
+
+    bid = Bid(HandRank.STRAIGHT, (10,))
+
+    assert probability_of_claim(cards, 5, bid) == 1.0
+
+
+def test_probability_of_guaranteed_full_house():
+    cards = [
+        Card(Rank.SEVEN, Suit.HEARTS),
+        Card(Rank.SEVEN, Suit.CLUBS),
+        Card(Rank.SEVEN, Suit.SPADES),
+        Card(Rank.ACE, Suit.DIAMONDS),
+        Card(Rank.ACE, Suit.HEARTS)
+    ]
+
+    bid = Bid(HandRank.FULL_HOUSE, (7, 14))
+
+    assert probability_of_claim(cards, 5, bid) == 1.0
+
+
+def test_probability_of_guaranteed_straight_flush():
+    cards = [
+        Card(Rank.NINE, Suit.HEARTS),
+        Card(Rank.EIGHT, Suit.HEARTS),
+        Card(Rank.SEVEN, Suit.HEARTS),
+        Card(Rank.SIX, Suit.HEARTS),
+        Card(Rank.FIVE, Suit.HEARTS)
+    ]
+
+    bid = Bid(HandRank.STRAIGHT_FLUSH, (9,))
+
+    assert probability_of_claim(cards, 5, bid) == 1.0
+
+def test_fast_claim_checker_matches_original_verifier():
+    cards = [
+        Card(Rank.ACE, Suit.HEARTS),
+        Card(Rank.ACE, Suit.SPADES),
+        Card(Rank.KING, Suit.HEARTS),
+        Card(Rank.KING, Suit.CLUBS),
+        Card(Rank.QUEEN, Suit.HEARTS),
+        Card(Rank.JACK, Suit.HEARTS),
+        Card(Rank.TEN, Suit.HEARTS),
+    ]
+
+    bids = [
+        Bid(HandRank.HIGH_CARD, (14,)),
+        Bid(HandRank.ONE_PAIR, (14,)),
+        Bid(HandRank.TWO_PAIR, (14, 13)),
+        Bid(HandRank.THREE_OF_A_KIND, (14,)),
+        Bid(HandRank.STRAIGHT, (14,)),
+        Bid(HandRank.FLUSH, (14, 13, 12, 11, 10)),
+        Bid(HandRank.FULL_HOUSE, (14, 13)),
+        Bid(HandRank.FOUR_OF_A_KIND, (14,)),
+        Bid(HandRank.STRAIGHT_FLUSH, (14,)),
+        Bid(HandRank.ROYAL_FLUSH, ())
+    ]
+
+    for bid in bids:
+        assert _claim_exists_fast(cards, bid) == claim_exists(cards, bid)
+
+
+def test_fast_checker_matches_original_on_random_card_sets():
+    rng = random.Random(42)
+
+    deck = [
+        Card(rank, suit)
+        for rank in Rank
+        for suit in Suit
+    ]
+
+    bids = [
+        Bid(HandRank.HIGH_CARD, (14,)),
+        Bid(HandRank.ONE_PAIR, (13,)),
+        Bid(HandRank.TWO_PAIR, (14, 10)),
+        Bid(HandRank.THREE_OF_A_KIND, (12,)),
+        Bid(HandRank.STRAIGHT, (10,)),
+        Bid(HandRank.FLUSH, (14, 12, 10, 8, 5)),
+        Bid(HandRank.FULL_HOUSE, (7, 14)),
+        Bid(HandRank.FOUR_OF_A_KIND, (11,)),
+        Bid(HandRank.STRAIGHT_FLUSH, (9,)),
+        Bid(HandRank.ROYAL_FLUSH, ())
+    ]
+
+    for _ in range(200):
+        cards = rng.sample(deck, rng.randint(5, 10))
+
+        for bid in bids:
+            fast_result = _claim_exists_fast(cards, bid)
+            original_result = claim_exists(cards, bid)
+
+            assert fast_result == original_result, (
+                f"Mismatch for {bid} with cards {cards}"
+            )

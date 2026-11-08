@@ -138,7 +138,7 @@ def test_detective_learns_from_false_claims(monkeypatch):
     # Keep the probability fixed so this test isolates
     # the effect of opponent history.
     monkeypatch.setattr(
-        "game.bot.probability_of_rank_claim",
+        "game.bot.probability_of_claim",
         lambda *args: 0.30
     )
 
@@ -168,7 +168,7 @@ def test_detective_does_not_adjust_for_own_claim_history(monkeypatch):
     bid = Bid(HandRank.THREE_OF_A_KIND, (14,))
 
     monkeypatch.setattr(
-        "game.bot.probability_of_rank_claim",
+        "game.bot.probability_of_claim",
         lambda *args: 0.30
     )
 
@@ -189,8 +189,151 @@ def test_detective_works_without_opponent_manager(monkeypatch):
     bid = Bid(HandRank.THREE_OF_A_KIND, (14,))
 
     monkeypatch.setattr(
-        "game.bot.probability_of_rank_claim",
+        "game.bot.probability_of_claim",
         lambda *args: 0.30
     )
 
     assert detective.should_challenge(bid, 12, "alice") is False
+
+
+def test_bot_generates_all_ten_categories():
+    bot = create_bot(BotPersonality.CONSERVATIVE)
+
+    candidates = bot.generate_candidates()
+
+    categories = {bid.category for bid in candidates}
+
+    assert categories == set(HandRank)
+
+
+def test_all_generated_bids_are_structurally_valid():
+    bot = create_bot(BotPersonality.CONSERVATIVE)
+
+    candidates = bot.generate_candidates()
+
+    assert len(candidates) > 1000
+
+    for bid in candidates:
+        assert isinstance(bid, Bid)
+        assert bid.category in HandRank
+
+
+def test_bot_can_raise_to_two_pair():
+    bot = create_bot(BotPersonality.CONSERVATIVE)
+
+    current_bid = Bid(HandRank.ONE_PAIR, (14,))
+    new_bid = bot.choose_bid(current_bid)
+
+    assert new_bid > current_bid
+
+
+def test_bot_can_raise_to_flush():
+    bot = create_bot(BotPersonality.CONSERVATIVE)
+
+    current_bid = Bid(HandRank.FULL_HOUSE, (14, 13))
+    new_bid = bot.choose_bid(current_bid)
+
+    assert new_bid.category == HandRank.FOUR_OF_A_KIND
+    assert new_bid > current_bid
+
+
+def test_bot_returns_none_when_no_higher_bid_exists():
+    bot = create_bot(BotPersonality.CONSERVATIVE)
+
+    current_bid = Bid(HandRank.ROYAL_FLUSH, ())
+
+    assert bot.choose_bid(current_bid) is None
+
+
+def test_bot_generates_valid_full_house_claims():
+    bot = create_bot(BotPersonality.CONSERVATIVE)
+
+    candidates = [
+        bid for bid in bot.generate_candidates()
+        if bid.category == HandRank.FULL_HOUSE
+    ]
+
+    assert len(candidates) == 13 * 12
+
+    for bid in candidates:
+        assert bid.values[0] != bid.values[1]
+
+
+def test_bot_can_challenge_complex_claims(monkeypatch):
+    player = Player("bot1", "Test Bot")
+    bot = Bot(player, BotPersonality.AGGRESSIVE)
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args: 0.10
+    )
+
+    bids = [
+        Bid(HandRank.HIGH_CARD, (14,)),
+        Bid(HandRank.ONE_PAIR, (14,)),
+        Bid(HandRank.TWO_PAIR, (14, 10)),
+        Bid(HandRank.THREE_OF_A_KIND, (14,)),
+        Bid(HandRank.STRAIGHT, (10,)),
+        Bid(HandRank.FLUSH, (14, 12, 10, 8, 5)),
+        Bid(HandRank.FULL_HOUSE, (14, 10)),
+        Bid(HandRank.FOUR_OF_A_KIND, (14,)),
+        Bid(HandRank.STRAIGHT_FLUSH, (9,)),
+        Bid(HandRank.ROYAL_FLUSH, ())
+    ]
+
+    for bid in bids:
+        assert bot.should_challenge(bid, 12) is True
+
+
+def test_conservative_bot_requires_lower_probability(monkeypatch):
+    bot = create_bot(BotPersonality.CONSERVATIVE)
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args: 0.20
+    )
+
+    bid = Bid(HandRank.FLUSH, (14, 12, 10, 8, 5))
+
+    assert bot.should_challenge(bid, 12) is False
+
+
+def test_aggressive_bot_challenges_at_higher_probability(monkeypatch):
+    bot = create_bot(BotPersonality.AGGRESSIVE)
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args: 0.30
+    )
+
+    bid = Bid(HandRank.FLUSH, (14, 12, 10, 8, 5))
+
+    assert bot.should_challenge(bid, 12) is True
+
+
+def test_detective_adjusts_complex_claim_suspicion(monkeypatch):
+    player = Player("bot", "Detective")
+    manager = OpponentProfileManager(["bot", "alice"])
+
+    detective = Bot(
+        player,
+        BotPersonality.DETECTIVE,
+        manager
+    )
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args: 0.30
+    )
+
+    bid = Bid(HandRank.STRAIGHT, (10,))
+
+    # Initially, 30% probability is above the Detective's 25% threshold.
+    assert detective.should_challenge(bid, 12, "alice") is False
+
+    # Alice makes four false claims.
+    for _ in range(4):
+        manager.record_claim("alice", False)
+
+    # Historical behaviour increases suspicion.
+    assert detective.should_challenge(bid, 12, "alice") is True
