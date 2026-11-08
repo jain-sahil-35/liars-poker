@@ -17,9 +17,9 @@ class OpponentProfileManager:
 
         return self.profiles[player_id]
 
-    def record_bid(self, player_id):
-
-        self.get_profile(player_id).record_bid()
+    def record_bid(self, player_id, bid=None):
+        
+        self.get_profile(player_id).record_bid(bid)
 
     def record_claim(self, player_id, is_true):
 

@@ -271,7 +271,49 @@ class Bot:
 
         return chosen_bid
 
-    def should_challenge(self, current_bid, total_cards, bidder_id=None):
+    def _get_pattern_suspicion(self, current_bid, bidder_id, bid_history):
+        """
+        Estimate extra suspicion from an opponent's bidding patterns.
+        Returns a small threshold adjustment.
+        """
+
+        if bidder_id is None or bidder_id == self.player_id:
+            return 0.0
+
+        if bid_history is None:
+            return 0.0
+
+        # Check the opponent's bids in the current round.
+        player_bids = bid_history.get_player_bids(bidder_id)
+
+        repeated_count = sum(
+            record.bid.category == current_bid.category
+            for record in player_bids
+        )
+
+        # Repeated use of the same category this round.
+        round_bonus = min(max(repeated_count - 1, 0) * 0.05, 0.10)
+
+        # Check the opponent's long-term category preference.
+        profile = self.opponent_manager.get_profile(bidder_id)
+
+        category_bonus = 0.0
+
+        if profile.total_bids >= 4:
+            frequency = profile.category_frequency(current_bid.category)
+
+            if frequency >= 0.50:
+                category_bonus = 0.03
+
+        return round_bonus + category_bonus
+
+    def should_challenge(
+        self,
+        current_bid,
+        total_cards,
+        bidder_id=None,
+        bid_history=None
+    ):
         """Decide whether the current claim is likely to be false."""
 
         if current_bid is None:
@@ -306,13 +348,30 @@ class Bot:
                 profile.false_claim_rate - 0.5
             ) * 0.20
 
+            threshold += self._get_pattern_suspicion(
+                current_bid,
+                bidder_id,
+                bid_history
+            )
+
         self.last_challenge_threshold = threshold
 
         return probability < threshold
 
-    def decide_action(self, current_bid, total_cards, bidder_id=None):
+    def decide_action(
+        self,
+        current_bid,
+        total_cards,
+        bidder_id=None,
+        bid_history=None
+    ):
 
-        if self.should_challenge(current_bid, total_cards, bidder_id):
+        if self.should_challenge(
+            current_bid,
+            total_cards,
+            bidder_id,
+            bid_history
+        ):
             return "challenge", None
 
         bid = self.choose_bid(current_bid, total_cards)

@@ -207,7 +207,7 @@ class GameState:
         )
 
         # Update the player's long-term statistics.
-        self.opponent_manager.record_bid(player_id)
+        self.opponent_manager.record_bid(player_id, bid)
 
         return bid
 
@@ -314,7 +314,8 @@ class GameState:
         action, bid = bot.decide_action(
             self.bid_manager.current_bid,
             total_cards,
-            self.bidder_id
+            self.bidder_id,
+            self.bid_history
         )
 
         if action == "challenge":

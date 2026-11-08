@@ -4,6 +4,8 @@ from game.bidding import Bid
 from game.hand_evaluator import HandRank
 from game.cards import Card, Rank, Suit
 from game.opponent_manager import OpponentProfileManager
+from game.bid_history import BidHistory
+from game.opponent_profile import OpponentProfile
 
 def create_bot(personality):
 
@@ -443,3 +445,71 @@ def test_bot_records_probability_of_selected_bid(monkeypatch):
     bot.choose_bid(None, total_cards=6)
 
     assert bot.last_bid_probability == 0.80
+
+
+def test_opponent_profile_tracks_bid_categories():
+    manager = OpponentProfileManager(["alice"])
+
+    bid1 = Bid(HandRank.ONE_PAIR, (10,))
+    bid2 = Bid(HandRank.TWO_PAIR, (10, 8))
+    bid3 = Bid(HandRank.ONE_PAIR, (12,))
+
+    manager.record_bid("alice", bid1)
+    manager.record_bid("alice", bid2)
+    manager.record_bid("alice", bid3)
+
+    profile = manager.get_profile("alice")
+
+    assert profile.total_bids == 3
+    assert profile.category_frequency(HandRank.ONE_PAIR) == 2 / 3
+    assert profile.category_frequency(HandRank.TWO_PAIR) == 1 / 3
+
+
+def test_detective_uses_repeated_bid_patterns(monkeypatch):
+    player = Player("bot", "Detective")
+    manager = OpponentProfileManager(["bot", "alice"])
+
+    detective = Bot(
+        player,
+        BotPersonality.DETECTIVE,
+        manager
+    )
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args, **kwargs: 0.29
+    )
+
+    history = BidHistory()
+
+    first_bid = Bid(HandRank.ONE_PAIR, (10,))
+    second_bid = Bid(HandRank.ONE_PAIR, (11,))
+
+    history.add_bid("alice", first_bid, 1)
+    history.add_bid("alice", second_bid, 2)
+
+    # One repeated category should make the Detective
+    # slightly more suspicious.
+    assert detective.should_challenge(
+        second_bid, 12, "alice", history
+    ) is True
+
+
+def test_non_detective_does_not_use_bid_patterns(monkeypatch):
+    player = Player("bot", "Conservative")
+
+    bot = Bot(player, BotPersonality.CONSERVATIVE)
+
+    monkeypatch.setattr(
+        "game.bot.probability_of_claim",
+        lambda *args, **kwargs: 0.20
+    )
+
+    history = BidHistory()
+    bid = Bid(HandRank.ONE_PAIR, (10,))
+
+    history.add_bid("alice", bid, 1)
+
+    assert bot.should_challenge(
+        bid, 12, "alice", history
+    ) is False
